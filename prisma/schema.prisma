@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  role          String         @default("driver")
+  pin           String?
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  dailyReviews  DailyReview[]
+  weeklyReviews WeeklyReview[]
+  shortcuts     UserShortcut[]
+}
+
+model UserShortcut {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // print_weekly | weekly_check | daily_check
+  vehicleId String?
+  label     String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Vehicle {
+  id                   String            @id @default(cuid())
+  plate                String            @unique
+  brand                String
+  model                String
+  year                 Int
+  color                String?
+  kmCurrent            Int               @default(0)
+  notes                String?           @db.Text
+  weeklyFluidItems     Json?
+  weeklyInventoryItems Json?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  oilChange        OilChange?
+  vtv              VTV?
+  fireExtinguisher FireExtinguisher?
+  tirePressure     TirePressure?
+  alignmentBalance AlignmentBalance?
+  tools            Tool[]
+  fluids           Fluid[]
+  dailyReviews     DailyReview[]
+  weeklyReviews    WeeklyReview[]
+  links            CustomLink[]
+}
+
+model AlignmentBalance {
+  id          String    @id @default(cuid())
+  vehicleId   String    @unique
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  lastKm      Int
+  lastDate    DateTime
+  kmInterval  Int       @default(20000)
+  nextKm      Int?
+  nextDate    DateTime?
+  notes       String?   @db.Text
+  updatedAt   DateTime  @updatedAt
+}
+
+model FireExtinguisher {
+  id             String   @id @default(cuid())
+  vehicleId      String   @unique
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  expirationDate DateTime
+  notes          String?  @db.Text
+  updatedAt      DateTime @updatedAt
+}
+
+model Fluid {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name        String
+  description String?   @db.Text
+  expiryMode  String    @default("date")
+  kmInterval  Int?
+  lastKm      Int?
+  nextKm      Int?
+  lastDate    DateTime?
+  nextDate    DateTime?
+  notes              String?   @db.Text
+  showMaintenanceBtn Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model OilChange {
+  id            String    @id @default(cuid())
+  vehicleId     String    @unique
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  kmInterval    Int       @default(10000)
+  lastKm        Int
+  lastDate      DateTime
+  nextKm        Int
+  nextDate      DateTime?
+  oilType           String?
+  airFilterCleaned  Boolean   @default(false)
+  airFilterChanged  Boolean   @default(false)
+  fuelFilterChanged Boolean   @default(false)
+  notes             String?   @db.Text
+  updatedAt     DateTime  @updatedAt
+}
+
+model VTV {
+  id             String    @id @default(cuid())
+  vehicleId      String    @unique
+  vehicle        Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  expirationDate DateTime
+  lastDate       DateTime?
+  notes          String?   @db.Text
+  updatedAt      DateTime  @updatedAt
+}
+
+model TirePressure {
+  id          String    @id @default(cuid())
+  vehicleId   String    @unique
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  frontLeft   Float?
+  frontRight  Float?
+  rearLeft    Float?
+  rearRight   Float?
+  spare       Float?
+  recommended Float     @default(32)
+  lastCheck   DateTime  @default(now())
+  notes       String?   @db.Text
+  updatedAt   DateTime  @updatedAt
+}
+
+model Tool {
+  id        String   @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name      String
+  quantity  Int      @default(1)
+  condition String   @default("good")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DailyReview {
+  id        String   @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  date      DateTime @default(now())
+  reviewer  String?
+  items     Json
+  kmReading Int?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+model WeeklyReview {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  weekStart       DateTime
+  reviewer        String?
+  kmReading       Int?
+  insuranceOk     Boolean?
+  items           Json?
+  fluidChecks     Json?
+  inventoryChecks Json?
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+}
+
+model CustomLink {
+  id        String   @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  label     String
+  url       String   @db.Text
+  icon      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
