@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Car, Boxes, AlertTriangle, CheckCircle, Plus, Trash2,
@@ -65,6 +65,7 @@ function ExpiryBadge({ date }: { date: string | Date | null | undefined }) {
 
 export default function DriverDetailPage() {
   const { id } = useParams()
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('resumen')
   const [driver, setDriver] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -89,7 +90,7 @@ export default function DriverDetailPage() {
   async function deleteDriver() {
     if (!confirm(`¿Eliminar a ${driver.fullName}? Esta acción no se puede deshacer.`)) return
     await fetch(`/api/drivers/${id}`, { method: 'DELETE' })
-    window.location.href = '/drivers'
+    router.push('/drivers')
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-slate-400">Cargando...</div></div>

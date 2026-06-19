@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
@@ -91,5 +92,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   await db.driver.delete({ where: { id: params.id } })
+  revalidatePath('/drivers')
   return NextResponse.json({ ok: true })
 }
