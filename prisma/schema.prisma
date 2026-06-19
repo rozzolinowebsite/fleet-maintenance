@@ -30,6 +30,14 @@ model UserShortcut {
   createdAt DateTime @default(now())
 }
 
+model VehicleType {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  order    Int       @default(0)
+  features Json?
+  vehicles Vehicle[]
+}
+
 model Vehicle {
   id                   String            @id @default(cuid())
   plate                String            @unique
@@ -41,6 +49,9 @@ model Vehicle {
   notes                String?           @db.Text
   weeklyFluidItems     Json?
   weeklyInventoryItems Json?
+  typeId               String?
+  type                 VehicleType?      @relation(fields: [typeId], references: [id])
+  warrantyExpiry       DateTime?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -54,6 +65,32 @@ model Vehicle {
   dailyReviews     DailyReview[]
   weeklyReviews    WeeklyReview[]
   links            CustomLink[]
+  trailers         Trailer[]
+  drivers          Driver[]
+}
+
+model Trailer {
+  id            String   @id @default(cuid())
+  // Identificación
+  domain        String   @unique
+  brand         String
+  model         String
+  year          Int
+  chassisNumber String?
+  // Configuración
+  trailerType   String   // "acoplado" | "semiremolque"
+  subtype       String
+  axleCount     Int?
+  axleConfig    String?
+  grossWeight   Float?
+  tare          Float?
+  notes         String?  @db.Text
+  // Asociación
+  vehicleId     String?
+  vehicle       Vehicle? @relation(fields: [vehicleId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  drivers       Driver[]
 }
 
 model AlignmentBalance {
@@ -190,4 +227,80 @@ model CustomLink {
   icon      String?
   order     Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+model Driver {
+  id               String    @id @default(cuid())
+  // Personal
+  fullName         String
+  dni              String?
+  cuil             String?
+  birthDate        DateTime?
+  address          String?   @db.Text
+  phone            String?
+  emergencyContact String?
+  // License
+  licenseCategories  Json?
+  licenseExpiry      DateTime?
+  licensePhotoFront  String?
+  licensePhotoBack   String?
+  // DNI
+  dniPhotoFront      String?
+  dniPhotoBack       String?
+  // Psycho exam
+  psychoDate       DateTime?
+  psychoExpiry     DateTime?
+  // Pre-occupational
+  preOccupDate     DateTime?
+  preOccupResult   String?
+  // Labor
+  legajo           String?
+  hireDate         DateTime?
+  position         String?
+  agreement        String?
+  operativeBase    String?
+  status           String    @default("active")
+  // Operational
+  currentVehicleId String?
+  currentVehicle   Vehicle?  @relation(fields: [currentVehicleId], references: [id])
+  currentTrailerId String?
+  currentTrailer   Trailer?  @relation(fields: [currentTrailerId], references: [id])
+  // Relations
+  trainings        DriverTraining[]
+  history          DriverVehicleHistory[]
+  events           DriverEvent[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model DriverTraining {
+  id        String    @id @default(cuid())
+  driverId  String
+  driver    Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  name      String
+  date      DateTime?
+  expiry    DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+}
+
+model DriverVehicleHistory {
+  id            String   @id @default(cuid())
+  driverId      String
+  driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehiclePlate  String?
+  trailerDomain String?
+  assignedAt    DateTime @default(now())
+  assignedBy    String?
+  notes         String?
+}
+
+model DriverEvent {
+  id          String   @id @default(cuid())
+  driverId    String
+  driver      Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  type        String   // "infraction" | "accident"
+  date        DateTime
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
 }

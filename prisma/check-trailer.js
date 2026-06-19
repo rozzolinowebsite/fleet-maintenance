@@ -1,0 +1,6 @@
+const { PrismaClient } = require('@prisma/client')
+const db = new PrismaClient()
+db.trailer.count()
+  .then(n => { console.log('Tabla Trailer OK, registros:', n) })
+  .catch(e => { console.error('ERROR:', e.message) })
+  .finally(() => db.$disconnect())

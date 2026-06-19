@@ -7,7 +7,7 @@ export const revalidate = 0
 
 export default async function VehiclesPage() {
   const vehicles = await db.vehicle.findMany({
-    include: { vtv: true, oilChange: true, alignmentBalance: true, tirePressure: true, tools: true },
+    include: { type: true, vtv: true, oilChange: true, alignmentBalance: true, tirePressure: true, tools: true },
     orderBy: { plate: 'asc' },
   })
 
@@ -56,6 +56,11 @@ export default async function VehiclesPage() {
                   <div>
                     <p className="font-bold text-white text-lg leading-tight">{v.plate}</p>
                     <p className="text-slate-400 text-sm">{v.brand} {v.model}</p>
+                    {v.type && (
+                      <span className="inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                        {v.type.name}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <p className="text-slate-500 text-xs uppercase tracking-wider mb-0.5">Año / KM</p>

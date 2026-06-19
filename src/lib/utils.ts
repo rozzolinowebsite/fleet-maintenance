@@ -118,18 +118,7 @@ export const DEFAULT_FLUID_CHECK_ITEMS = [
   'Presión de neumáticos',
 ]
 
-export const DEFAULT_INVENTORY_ITEMS = [
-  'REJILLA',
-  'GAMUZA',
-  'TOALLITA',
-  'OFF',
-  'PLATSUL',
-  'PAPEL HIGIÉNICO',
-  'LIQUID',
-  'LAPICERA',
-  'FIBRON',
-  'FUENTE 12V CARGADOR',
-]
+export const DEFAULT_INVENTORY_ITEMS: string[] = []
 
 export const DAILY_ITEMS = [
   { id: 'engine_start', label: 'Motor arrancó correctamente' },

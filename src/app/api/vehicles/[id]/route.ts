@@ -5,6 +5,8 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   const vehicle = await db.vehicle.findUnique({
     where: { id: params.id },
     include: {
+      type: true,
+      trailers: { orderBy: { domain: 'asc' }, select: { id: true, domain: true, brand: true, model: true, trailerType: true, subtype: true } },
       oilChange: true,
       vtv: true,
       fireExtinguisher: true,
@@ -35,6 +37,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(body.notes !== undefined && { notes: body.notes }),
       ...(body.weeklyFluidItems !== undefined && { weeklyFluidItems: body.weeklyFluidItems }),
       ...(body.weeklyInventoryItems !== undefined && { weeklyInventoryItems: body.weeklyInventoryItems }),
+      ...(body.typeId !== undefined && { typeId: body.typeId }),
+      ...('warrantyExpiry' in body && { warrantyExpiry: body.warrantyExpiry ? new Date(body.warrantyExpiry) : null }),
     },
   })
   return NextResponse.json(vehicle)

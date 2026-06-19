@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Car, Wrench, ClipboardList, Link2, Settings,
   Trash2, Plus, Save, ExternalLink, QrCode, AlertTriangle,
-  CheckCircle, XCircle, MinusCircle, Droplets, Sliders, Flame, X, RotateCcw
+  CheckCircle, XCircle, MinusCircle, Droplets, Sliders, Flame, X, RotateCcw, Boxes
 } from 'lucide-react'
 import {
   getVTVStatus, getOilChangeStatus, getAlignmentStatus, getTirePressureStatus, getFluidStatus,
@@ -99,7 +99,10 @@ export default function VehicleDetailPage() {
                 : [vtvS, oilS, alignS].every(s => s === 'ok') ? 'ok' : 'unknown'
               )}`} />
             </div>
-            <p className="text-slate-400 text-sm">{vehicle.brand} {vehicle.model} · {vehicle.year} · {vehicle.color || '—'}</p>
+            <p className="text-slate-400 text-sm">
+              {vehicle.brand} {vehicle.model} · {vehicle.year} · {vehicle.color || '—'}
+              {vehicle.type && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">{vehicle.type.name}</span>}
+            </p>
           </div>
         </div>
         <button onClick={deleteVehicle} className="btn-danger flex items-center gap-1.5 shrink-0">
@@ -140,12 +143,28 @@ export default function VehicleDetailPage() {
 function OverviewTab({ vehicle, onSave, onRefresh }: any) {
   const [editKm, setEditKm] = useState(false)
   const [km, setKm] = useState(vehicle.kmCurrent.toString())
+  const [editWarranty, setEditWarranty] = useState(false)
+  const [warrantyDate, setWarrantyDate] = useState(
+    vehicle.warrantyExpiry ? new Date(vehicle.warrantyExpiry).toISOString().split('T')[0] : ''
+  )
 
   async function saveKm() {
     await onSave('kmCurrent', Number(km))
     setEditKm(false)
     onRefresh()
   }
+
+  async function saveWarranty(dateStr: string | null) {
+    await onSave('warrantyExpiry', dateStr)
+    setEditWarranty(false)
+    onRefresh()
+  }
+
+  const warrantyExpiry = vehicle.warrantyExpiry ? new Date(vehicle.warrantyExpiry) : null
+  const warrantyStatus = !warrantyExpiry ? 'none'
+    : warrantyExpiry < new Date() ? 'expired'
+    : warrantyExpiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'warning'
+    : 'ok'
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -155,6 +174,7 @@ function OverviewTab({ vehicle, onSave, onRefresh }: any) {
           <h3 className="section-title">Datos del vehículo</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Row label="Patente" value={vehicle.plate} />
+            {vehicle.type && <Row label="Tipo" value={vehicle.type.name} />}
             <Row label="Marca" value={vehicle.brand} />
             <Row label="Modelo" value={vehicle.model} />
             <Row label="Año" value={vehicle.year} />
@@ -188,6 +208,123 @@ function OverviewTab({ vehicle, onSave, onRefresh }: any) {
             </div>
           )}
         </div>
+
+        {/* Garantía */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="section-title">Garantía</h3>
+            {!editWarranty && (
+              <button
+                onClick={() => setEditWarranty(true)}
+                className="text-xs text-slate-500 hover:text-white transition-colors"
+              >
+                {warrantyStatus === 'none' ? '+ Agregar' : 'Editar'}
+              </button>
+            )}
+          </div>
+
+          {editWarranty ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Fecha de vencimiento</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={warrantyDate}
+                  onChange={e => setWarrantyDate(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => warrantyDate && saveWarranty(warrantyDate)}
+                  disabled={!warrantyDate}
+                  className="btn-primary text-sm py-1.5 flex-1"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => { setEditWarranty(false); setWarrantyDate(vehicle.warrantyExpiry ? new Date(vehicle.warrantyExpiry).toISOString().split('T')[0] : '') }}
+                  className="btn-secondary text-sm py-1.5"
+                >
+                  Cancelar
+                </button>
+                {warrantyStatus !== 'none' && (
+                  <button
+                    onClick={() => saveWarranty(null)}
+                    className="px-3 py-1.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : warrantyStatus === 'none' ? (
+            <p className="text-slate-600 text-sm">Sin garantía registrada</p>
+          ) : (
+            <div className={`flex items-center gap-3 p-3 rounded-lg border ${
+              warrantyStatus === 'expired' ? 'bg-red-500/10 border-red-500/20' :
+              warrantyStatus === 'warning' ? 'bg-yellow-500/10 border-yellow-500/20' :
+              'bg-emerald-500/10 border-emerald-500/20'
+            }`}>
+              <div className={`w-2 h-2 rounded-full shrink-0 ${
+                warrantyStatus === 'expired' ? 'bg-red-400' :
+                warrantyStatus === 'warning' ? 'bg-yellow-400' :
+                'bg-emerald-400'
+              }`} />
+              <div>
+                <p className={`text-sm font-medium ${
+                  warrantyStatus === 'expired' ? 'text-red-300' :
+                  warrantyStatus === 'warning' ? 'text-yellow-300' :
+                  'text-emerald-300'
+                }`}>
+                  {warrantyStatus === 'expired' ? 'Garantía vencida' :
+                   warrantyStatus === 'warning' ? 'Garantía por vencer' :
+                   'En garantía'}
+                </p>
+                <p className="text-slate-400 text-xs">
+                  Vence el {warrantyExpiry!.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Acoplados asociados */}
+        {(vehicle.trailers?.length > 0 || vehicle.type?.features?.acoplado === 'required') && (
+          <div className="card">
+            <div className="flex items-center gap-2 mb-3">
+              <Boxes size={15} className="text-slate-400" />
+              <h3 className="section-title">Acoplados asociados</h3>
+            </div>
+            {vehicle.type?.features?.acoplado === 'required' && vehicle.trailers?.length === 0 && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertTriangle size={14} className="text-red-400 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-red-300 text-sm font-medium">Acoplado requerido</p>
+                  <p className="text-red-400/70 text-xs">Este tipo de vehículo debe tener un acoplado asociado.</p>
+                </div>
+                <Link href="/trailers" className="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0">
+                  Ir a acoplados →
+                </Link>
+              </div>
+            )}
+            {vehicle.trailers?.length > 0 && (
+              <div className="space-y-2">
+                {vehicle.trailers.map((t: any) => (
+                  <Link key={t.id} href={`/trailers/${t.id}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group">
+                    <Boxes size={14} className="text-slate-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white font-medium text-sm">{t.domain}</span>
+                      <span className="text-slate-500 text-xs ml-2">{t.brand} {t.model} · {t.subtype}</span>
+                    </div>
+                    <span className="text-xs text-slate-600 group-hover:text-slate-400 transition-colors">Ver →</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Status summary */}
         <MaintenanceStatusCard vehicle={vehicle} />

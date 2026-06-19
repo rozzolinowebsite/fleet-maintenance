@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+export async function GET() {
+  const drivers = await db.driver.findMany({
+    include: {
+      currentVehicle: { select: { id: true, plate: true, brand: true, model: true } },
+      currentTrailer: { select: { id: true, domain: true, brand: true, model: true } },
+      events: { orderBy: { date: 'desc' }, take: 2 },
+      trainings: { orderBy: { createdAt: 'desc' }, take: 1 },
+    },
+    orderBy: { fullName: 'asc' },
+  })
+  return NextResponse.json(drivers)
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+  const driver = await db.driver.create({
+    data: {
+      fullName: body.fullName,
+      dni: body.dni || null,
+      cuil: body.cuil || null,
+      birthDate: body.birthDate ? new Date(body.birthDate) : null,
+      address: body.address || null,
+      phone: body.phone || null,
+      emergencyContact: body.emergencyContact || null,
+      licenseCategories: body.licenseCategories ?? [],
+      licenseExpiry: body.licenseExpiry ? new Date(body.licenseExpiry) : null,
+      psychoDate: body.psychoDate ? new Date(body.psychoDate) : null,
+      psychoExpiry: body.psychoExpiry ? new Date(body.psychoExpiry) : null,
+      preOccupDate: body.preOccupDate ? new Date(body.preOccupDate) : null,
+      preOccupResult: body.preOccupResult || null,
+      legajo: body.legajo || null,
+      hireDate: body.hireDate ? new Date(body.hireDate) : null,
+      position: body.position || null,
+      agreement: body.agreement || null,
+      operativeBase: body.operativeBase || null,
+      status: body.status || 'active',
+    },
+  })
+  return NextResponse.json(driver, { status: 201 })
+}
