@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Car, LogIn, UserPlus } from 'lucide-react'
 
 type User = { id: string; name: string; role: string; pin: string | null }
@@ -12,7 +11,6 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default function LoginPage() {
-  const router = useRouter()
   const [users, setUsers] = useState<User[] | null>(null)
   const [selectedId, setSelectedId] = useState('')
   const [pin, setPin] = useState('')
@@ -45,8 +43,7 @@ export default function LoginPage() {
       body: JSON.stringify({ userId: selectedId, pin }),
     })
     if (res.ok) {
-      router.push('/')
-      router.refresh()
+      window.location.href = '/'
     } else {
       const data = await res.json()
       setError(data.error || 'Error al iniciar sesión')

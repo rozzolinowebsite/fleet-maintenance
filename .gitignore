@@ -15,3 +15,8 @@
 
 # typescript
 *.tsbuildinfo
+
+/.agents
+/.claude
+/.codestudio
+skills-lock.json
