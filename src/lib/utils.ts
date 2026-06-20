@@ -109,6 +109,22 @@ export function getFireExtinguisherStatus(expirationDate: Date | string | null):
   return 'ok'
 }
 
+export function getInsuranceStatus(policyExpirationDate: Date | string | null): StatusLevel {
+  if (!policyExpirationDate) return 'unknown'
+  const days = differenceInDays(new Date(policyExpirationDate), new Date())
+  if (days < 0) return 'danger'
+  if (days <= 30) return 'warning'
+  return 'ok'
+}
+
+export function getDocumentStatus(expiryDate: Date | string | null): StatusLevel {
+  if (!expiryDate) return 'unknown'
+  const days = differenceInDays(new Date(expiryDate), new Date())
+  if (days < 0) return 'danger'
+  if (days <= 30) return 'warning'
+  return 'ok'
+}
+
 export const DEFAULT_FLUID_CHECK_ITEMS = [
   'Aceite de motor',
   'Refrigerante',

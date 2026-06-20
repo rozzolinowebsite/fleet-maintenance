@@ -173,7 +173,7 @@ function ResumenTab({ driver, lastInfraction, lastAccident, lastTraining, licDay
         </InfoRow>
         <InfoRow label="Acoplado habitual">
           {driver.currentTrailer
-            ? <Link href={`/trailers/${driver.currentTrailer.id}`} className="text-blue-400 hover:text-blue-300 transition-colors">{driver.currentTrailer.domain}</Link>
+            ? <Link href={`/acoplados/${driver.currentTrailer.id}`} className="text-blue-400 hover:text-blue-300 transition-colors">{driver.currentTrailer.domain}</Link>
             : <span className="text-slate-500">Sin asignar</span>}
         </InfoRow>
 
@@ -718,7 +718,7 @@ function OperativoTab({ driver, onSave, onRefresh }: any) {
 
   async function openTrailer() {
     setLoading(true)
-    const res = await fetch('/api/trailers')
+    const res = await fetch('/api/acoplados')
     setTrailers(await res.json())
     setLoading(false)
     setShowTrailerModal(true)
@@ -786,7 +786,7 @@ function OperativoTab({ driver, onSave, onRefresh }: any) {
           <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
             <Boxes size={15} className="text-slate-400 shrink-0" />
             <div className="flex-1">
-              <Link href={`/trailers/${driver.currentTrailer.id}`} className="text-white font-medium text-sm hover:text-blue-400 transition-colors">
+              <Link href={`/acoplados/${driver.currentTrailer.id}`} className="text-white font-medium text-sm hover:text-blue-400 transition-colors">
                 {driver.currentTrailer.domain}
               </Link>
               <p className="text-slate-500 text-xs">{driver.currentTrailer.brand} {driver.currentTrailer.model} · {driver.currentTrailer.trailerType}</p>

@@ -1,8 +1,8 @@
 import { db } from '@/lib/db'
-import { getVTVStatus, getOilChangeStatus, getAlignmentStatus, fmtDate, statusDot } from '@/lib/utils'
+import { getVTVStatus, getOilChangeStatus, getAlignmentStatus, getInsuranceStatus, getDocumentStatus, fmtDate, statusDot, statusBg } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 import Link from 'next/link'
-import { Car, AlertTriangle, Clock, CheckCircle2, Plus } from 'lucide-react'
+import { Car, AlertTriangle, Clock, CheckCircle2, Plus, Shield, Package2 } from 'lucide-react'
 import ShortcutsSection from '@/components/ShortcutsSection'
 
 export const revalidate = 0
@@ -11,6 +11,11 @@ export default async function DashboardPage() {
   const vehicles = await db.vehicle.findMany({
     include: { vtv: true, oilChange: true, alignmentBalance: true, tirePressure: true },
     orderBy: { createdAt: 'desc' },
+  })
+
+  const trailerUnits = await db.trailerUnit.findMany({
+    include: { documents: true },
+    orderBy: { name: 'asc' },
   })
 
   type Alert = {
@@ -52,7 +57,46 @@ export default async function DashboardPage() {
         alerts.push({ vehicleId: v.id, plate: v.plate, label: `${v.brand} ${v.model}`, message: `Alineación y balanceo${left !== null ? ` en ${left.toLocaleString()} km` : ' próxima'}`, level: 'warning' })
       }
     }
+    if (v.policyExpirationDate) {
+      const s = getInsuranceStatus(v.policyExpirationDate)
+      if (s === 'danger') {
+        alerts.push({ vehicleId: v.id, plate: v.plate, label: `${v.brand} ${v.model}`, message: `Seguro vencido el ${fmtDate(v.policyExpirationDate)}`, level: 'danger' })
+      } else if (s === 'warning') {
+        const days = differenceInDays(new Date(v.policyExpirationDate), new Date())
+        alerts.push({ vehicleId: v.id, plate: v.plate, label: `${v.brand} ${v.model}`, message: `Seguro vence en ${days} días (${fmtDate(v.policyExpirationDate)})`, level: 'warning' })
+      }
+    }
   }
+
+  const expiringPolicies = vehicles
+    .filter(v => v.policyExpirationDate)
+    .map(v => ({
+      id: v.id,
+      plate: v.plate,
+      brand: v.brand,
+      model: v.model,
+      expirationDate: v.policyExpirationDate!,
+      daysLeft: differenceInDays(new Date(v.policyExpirationDate!), new Date()),
+    }))
+    .filter(v => v.daysLeft <= 60)
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+
+  type ExpiringDoc = { trailerId: string; trailerName: string; docId: string; docName: string; docType: string; expiryDate: Date; daysLeft: number }
+  const expiringTrailerDocs: ExpiringDoc[] = []
+  for (const t of trailerUnits) {
+    for (const doc of t.documents) {
+      if (!doc.expiryDate) continue
+      const daysLeft = differenceInDays(new Date(doc.expiryDate), new Date())
+      if (daysLeft <= 60) {
+        expiringTrailerDocs.push({
+          trailerId: t.id, trailerName: t.name,
+          docId: doc.id, docName: doc.name, docType: doc.type,
+          expiryDate: doc.expiryDate, daysLeft,
+        })
+      }
+    }
+  }
+  expiringTrailerDocs.sort((a, b) => a.daysLeft - b.daysLeft)
 
   const dangerCount = alerts.filter(a => a.level === 'danger').length
   const warningCount = alerts.filter(a => a.level === 'warning').length
@@ -77,11 +121,20 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Flota total</p>
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Vehículos</p>
             <Car size={18} className="text-blue-400" />
           </div>
           <p className="text-3xl font-bold text-white">{vehicles.length}</p>
-          <p className="text-slate-500 text-xs mt-1">vehículos</p>
+          <p className="text-slate-500 text-xs mt-1">en flota</p>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Trailers</p>
+            <Package2 size={18} className="text-violet-400" />
+          </div>
+          <p className="text-3xl font-bold text-white">{trailerUnits.length}</p>
+          <p className="text-slate-500 text-xs mt-1">{trailerUnits.filter(t => t.status === 'ACTIVE').length} activos</p>
         </div>
 
         <div className="card">
@@ -100,15 +153,6 @@ export default async function DashboardPage() {
           </div>
           <p className="text-3xl font-bold text-amber-400">{warningCount}</p>
           <p className="text-slate-500 text-xs mt-1">próximos a vencer</p>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Al día</p>
-            <CheckCircle2 size={18} className="text-emerald-400" />
-          </div>
-          <p className="text-3xl font-bold text-emerald-400">{okCount}</p>
-          <p className="text-slate-500 text-xs mt-1">sin alertas</p>
         </div>
       </div>
 
@@ -139,6 +183,92 @@ export default async function DashboardPage() {
         </div>
       )}
 
+      {/* Pólizas por vencer */}
+      {expiringPolicies.length > 0 && (
+        <div className="card">
+          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+            <Shield size={16} className="text-blue-400" />
+            Pólizas por vencer
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Vehículo</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Dominio</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Vencimiento</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2">Días restantes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiringPolicies.map(p => {
+                  const insS = p.daysLeft < 0 ? 'danger' : p.daysLeft <= 30 ? 'warning' : 'ok'
+                  return (
+                    <tr key={p.id} className="border-b border-slate-800/50 last:border-0">
+                      <td className="py-2.5 pr-4">
+                        <Link href={`/vehicles/${p.id}`} className="text-white hover:text-blue-400 transition-colors font-medium">
+                          {p.brand} {p.model}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 pr-4 text-slate-400">{p.plate}</td>
+                      <td className="py-2.5 pr-4 text-slate-300">{fmtDate(p.expirationDate)}</td>
+                      <td className="py-2.5">
+                        <span className={`text-xs px-2 py-0.5 rounded border ${statusBg(insS)}`}>
+                          {p.daysLeft < 0 ? `Vencida hace ${Math.abs(p.daysLeft)} días` : p.daysLeft === 0 ? 'Vence hoy' : `${p.daysLeft} días`}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Trailer expiring documents */}
+      {expiringTrailerDocs.length > 0 && (
+        <div className="card">
+          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+            <Package2 size={16} className="text-violet-400" />
+            Documentos de trailers por vencer
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Trailer</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Documento</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2 pr-4">Vencimiento</th>
+                  <th className="text-left text-xs text-slate-500 font-medium uppercase tracking-wider pb-2">Días restantes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiringTrailerDocs.map(d => {
+                  const s = getDocumentStatus(d.expiryDate)
+                  return (
+                    <tr key={d.docId} className="border-b border-slate-800/50 last:border-0">
+                      <td className="py-2.5 pr-4">
+                        <Link href={`/trailers/${d.trailerId}`} className="text-white hover:text-blue-400 transition-colors font-medium">
+                          {d.trailerName}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 pr-4 text-slate-400">{d.docName}</td>
+                      <td className="py-2.5 pr-4 text-slate-300">{fmtDate(d.expiryDate)}</td>
+                      <td className="py-2.5">
+                        <span className={`text-xs px-2 py-0.5 rounded border ${statusBg(s)}`}>
+                          {d.daysLeft < 0 ? `Vencido hace ${Math.abs(d.daysLeft)} días` : d.daysLeft === 0 ? 'Vence hoy' : `${d.daysLeft} días`}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Fleet grid */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
@@ -163,9 +293,10 @@ export default async function DashboardPage() {
               const vtvS = v.vtv ? getVTVStatus(v.vtv.expirationDate) : 'unknown'
               const oilS = v.oilChange ? getOilChangeStatus(v.kmCurrent, v.oilChange.nextKm, v.oilChange.nextDate) : 'unknown'
               const alignS = v.alignmentBalance ? getAlignmentStatus(v.kmCurrent, v.alignmentBalance.nextKm, v.alignmentBalance.nextDate) : 'unknown'
-              const worst = [vtvS, oilS, alignS].includes('danger') ? 'danger'
-                : [vtvS, oilS, alignS].includes('warning') ? 'warning'
-                : [vtvS, oilS, alignS].every(s => s === 'ok') ? 'ok' : 'unknown'
+              const insS = getInsuranceStatus(v.policyExpirationDate ?? null)
+              const worst = [vtvS, oilS, alignS, insS].includes('danger') ? 'danger'
+                : [vtvS, oilS, alignS, insS].includes('warning') ? 'warning'
+                : [vtvS, oilS, alignS, insS].every(s => s === 'ok') ? 'ok' : 'unknown'
               return (
                 <Link
                   key={v.id}
@@ -201,6 +332,11 @@ export default async function DashboardPage() {
                         : alignS === 'warning' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
                         : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                       }`}>Alineación {v.alignmentBalance.nextKm ? v.alignmentBalance.nextKm.toLocaleString() + ' km' : fmtDate(v.alignmentBalance.lastDate)}</span>
+                    )}
+                    {v.policyExpirationDate && (
+                      <span className={`text-xs px-2 py-0.5 rounded border ${statusBg(insS)}`}>
+                        Seguro {insS === 'danger' ? 'vencido' : insS === 'warning' ? 'por vencer' : fmtDate(v.policyExpirationDate)}
+                      </span>
                     )}
                   </div>
                 </Link>

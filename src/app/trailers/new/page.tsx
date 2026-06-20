@@ -4,28 +4,19 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
-const SUBTYPES = [
-  'Playo', 'Sider', 'Tanque', 'Frigorífico', 'Batea',
-  'Volcador', 'Jaula', 'Porta contenedor', 'Carretón', 'Cerealero', 'Otro',
-]
-
-export default function NewTrailerPage() {
+export default function NewTrailerUnitPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    domain: '',
+    name: '',
+    patent: '',
     brand: '',
     model: '',
-    year: new Date().getFullYear().toString(),
-    chassisNumber: '',
-    trailerType: 'acoplado',
-    subtype: 'Playo',
-    axleCount: '',
-    axleConfig: '',
-    grossWeight: '',
-    tare: '',
-    notes: '',
+    year: '',
+    serialNumber: '',
+    description: '',
+    status: 'ACTIVE',
   })
 
   function set(field: string, value: string) {
@@ -46,7 +37,7 @@ export default function NewTrailerPage() {
       const trailer = await res.json()
       router.push(`/trailers/${trailer.id}`)
     } catch {
-      setError('No se pudo guardar. Verificá que el dominio no esté duplicado.')
+      setError('No se pudo guardar el trailer.')
       setSaving(false)
     }
   }
@@ -58,81 +49,61 @@ export default function NewTrailerPage() {
           <ArrowLeft size={20} />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-white">Nuevo acoplado</h1>
-          <p className="text-slate-400 text-sm">Datos del acoplado o semiremolque</p>
+          <h1 className="text-xl font-bold text-white">Nuevo trailer</h1>
+          <p className="text-slate-400 text-sm">Registrar un trailer de la flota</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Identificación */}
         <div className="card space-y-4">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Identificación</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label>Dominio *</label>
+              <label>Nombre *</label>
               <input
-                className="input uppercase"
-                value={form.domain}
-                onChange={e => set('domain', e.target.value.toUpperCase())}
-                placeholder="ABC 123"
+                className="input"
+                value={form.name}
+                onChange={e => set('name', e.target.value)}
+                placeholder="Ej: Trailer de repuestos A"
                 required
               />
             </div>
             <div>
-              <label>Marca *</label>
-              <input className="input" value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Randon" required />
+              <label>Patente</label>
+              <input
+                className="input uppercase"
+                value={form.patent}
+                onChange={e => set('patent', e.target.value.toUpperCase())}
+                placeholder="ABC 123"
+              />
             </div>
             <div>
-              <label>Modelo *</label>
-              <input className="input" value={form.model} onChange={e => set('model', e.target.value)} placeholder="SR BA" required />
+              <label>Número de serie</label>
+              <input className="input" value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} placeholder="SN-12345" />
             </div>
             <div>
-              <label>Año *</label>
-              <input className="input" type="number" value={form.year} onChange={e => set('year', e.target.value)} min="1970" max="2030" required />
+              <label>Marca</label>
+              <input className="input" value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Inarca" />
             </div>
             <div>
-              <label>Número de chasis</label>
-              <input className="input" value={form.chassisNumber} onChange={e => set('chassisNumber', e.target.value)} placeholder="9BW..." />
+              <label>Modelo</label>
+              <input className="input" value={form.model} onChange={e => set('model', e.target.value)} placeholder="T-500" />
             </div>
-          </div>
-        </div>
-
-        {/* Configuración */}
-        <div className="card space-y-4">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Configuración</h2>
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label>Tipo *</label>
-              <select className="input" value={form.trailerType} onChange={e => set('trailerType', e.target.value)} required>
-                <option value="acoplado">Acoplado</option>
-                <option value="semiremolque">Semiremolque</option>
+              <label>Año</label>
+              <input className="input" type="number" value={form.year} onChange={e => set('year', e.target.value)} min="1970" max="2030" placeholder="2020" />
+            </div>
+            <div>
+              <label>Estado</label>
+              <select className="input" value={form.status} onChange={e => set('status', e.target.value)}>
+                <option value="ACTIVE">Activo</option>
+                <option value="INACTIVE">Inactivo</option>
+                <option value="MAINTENANCE">En mantenimiento</option>
               </select>
-            </div>
-            <div>
-              <label>Subtipo *</label>
-              <select className="input" value={form.subtype} onChange={e => set('subtype', e.target.value)} required>
-                {SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Cantidad de ejes</label>
-              <input className="input" type="number" value={form.axleCount} onChange={e => set('axleCount', e.target.value)} min="1" max="10" placeholder="3" />
-            </div>
-            <div>
-              <label>Configuración de ejes</label>
-              <input className="input" value={form.axleConfig} onChange={e => set('axleConfig', e.target.value)} placeholder="Ej: 8×2+4" />
-            </div>
-            <div>
-              <label>Peso bruto total (kg)</label>
-              <input className="input" type="number" value={form.grossWeight} onChange={e => set('grossWeight', e.target.value)} placeholder="42000" min="0" />
-            </div>
-            <div>
-              <label>Tara (kg)</label>
-              <input className="input" type="number" value={form.tare} onChange={e => set('tare', e.target.value)} placeholder="7500" min="0" />
             </div>
             <div className="col-span-2">
-              <label>Notas</label>
-              <textarea className="input h-20 resize-none" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Información adicional..." />
+              <label>Descripción</label>
+              <textarea className="input h-20 resize-none" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descripción del trailer..." />
             </div>
           </div>
         </div>
@@ -141,7 +112,7 @@ export default function NewTrailerPage() {
 
         <div className="flex gap-3">
           <button type="submit" className="btn-primary flex-1" disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar acoplado'}
+            {saving ? 'Guardando...' : 'Guardar trailer'}
           </button>
           <Link href="/trailers" className="btn-secondary">Cancelar</Link>
         </div>

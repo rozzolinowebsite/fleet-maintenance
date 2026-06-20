@@ -5,20 +5,22 @@ import Link from 'next/link'
 import {
   ArrowLeft, Car, Wrench, ClipboardList, Link2, Settings,
   Trash2, Plus, Save, ExternalLink, QrCode, AlertTriangle,
-  CheckCircle, XCircle, MinusCircle, Droplets, Sliders, Flame, X, RotateCcw, Boxes
+  CheckCircle, XCircle, MinusCircle, Droplets, Sliders, Flame, X, RotateCcw, Boxes,
+  Shield, FileText, Upload, Download, Eye
 } from 'lucide-react'
 import {
   getVTVStatus, getOilChangeStatus, getAlignmentStatus, getTirePressureStatus, getFluidStatus,
-  getFireExtinguisherStatus, DEFAULT_FLUID_CHECK_ITEMS, DEFAULT_INVENTORY_ITEMS,
+  getFireExtinguisherStatus, getInsuranceStatus, DEFAULT_FLUID_CHECK_ITEMS, DEFAULT_INVENTORY_ITEMS,
   fmtDate, fmtKm, statusBg, statusColor, statusDot, DAILY_ITEMS, WEEKLY_ITEMS
 } from '@/lib/utils'
 import StatusBadge from '@/components/StatusBadge'
 import QRCodeDisplay from '@/components/QRCodeDisplay'
 
-type Tab = 'overview' | 'maintenance' | 'fluids' | 'tools' | 'reviews' | 'links' | 'config'
+type Tab = 'overview' | 'insurance' | 'maintenance' | 'fluids' | 'tools' | 'reviews' | 'links' | 'config'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'General', icon: <Car size={15} /> },
+  { id: 'insurance', label: 'Seguro', icon: <Shield size={15} /> },
   { id: 'maintenance', label: 'Mantenimiento', icon: <Settings size={15} /> },
   { id: 'fluids', label: 'Fluidos', icon: <Droplets size={15} /> },
   { id: 'tools', label: 'Herramientas', icon: <Wrench size={15} /> },
@@ -81,6 +83,7 @@ export default function VehicleDetailPage() {
   const vtvS = vehicle.vtv ? getVTVStatus(vehicle.vtv.expirationDate) : 'unknown'
   const oilS = vehicle.oilChange ? getOilChangeStatus(vehicle.kmCurrent, vehicle.oilChange.nextKm, vehicle.oilChange.nextDate) : 'unknown'
   const alignS = vehicle.alignmentBalance ? getAlignmentStatus(vehicle.kmCurrent, vehicle.alignmentBalance.nextKm, vehicle.alignmentBalance.nextDate) : 'unknown'
+  const insuranceS = getInsuranceStatus(vehicle.policyExpirationDate ?? null)
 
   return (
     <div className="space-y-5">
@@ -94,9 +97,9 @@ export default function VehicleDetailPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-white">{vehicle.plate}</h1>
               <span className={`w-3 h-3 rounded-full ${statusDot(
-                [vtvS, oilS, alignS].includes('danger') ? 'danger'
-                : [vtvS, oilS, alignS].includes('warning') ? 'warning'
-                : [vtvS, oilS, alignS].every(s => s === 'ok') ? 'ok' : 'unknown'
+                [vtvS, oilS, alignS, insuranceS].includes('danger') ? 'danger'
+                : [vtvS, oilS, alignS, insuranceS].includes('warning') ? 'warning'
+                : [vtvS, oilS, alignS, insuranceS].every(s => s === 'ok') ? 'ok' : 'unknown'
               )}`} />
             </div>
             <p className="text-slate-400 text-sm">
@@ -129,6 +132,7 @@ export default function VehicleDetailPage() {
 
       {/* Tab content */}
       {tab === 'overview' && <OverviewTab vehicle={vehicle} onSave={saveField} onRefresh={fetchVehicle} />}
+      {tab === 'insurance' && <InsuranceTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'maintenance' && <MaintenanceTab vehicle={vehicle} vtvS={vtvS} oilS={oilS} alignS={alignS} onRefresh={fetchVehicle} />}
       {tab === 'fluids' && <FluidsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'tools' && <ToolsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
@@ -304,7 +308,7 @@ function OverviewTab({ vehicle, onSave, onRefresh }: any) {
                   <p className="text-red-300 text-sm font-medium">Acoplado requerido</p>
                   <p className="text-red-400/70 text-xs">Este tipo de vehículo debe tener un acoplado asociado.</p>
                 </div>
-                <Link href="/trailers" className="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0">
+                <Link href="/acoplados" className="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0">
                   Ir a acoplados →
                 </Link>
               </div>
@@ -312,7 +316,7 @@ function OverviewTab({ vehicle, onSave, onRefresh }: any) {
             {vehicle.trailers?.length > 0 && (
               <div className="space-y-2">
                 {vehicle.trailers.map((t: any) => (
-                  <Link key={t.id} href={`/trailers/${t.id}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group">
+                  <Link key={t.id} href={`/acoplados/${t.id}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group">
                     <Boxes size={14} className="text-slate-500 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="text-white font-medium text-sm">{t.domain}</span>
@@ -369,6 +373,7 @@ function MaintenanceStatusCard({ vehicle }: { vehicle: any }) {
   const alignS = vehicle.alignmentBalance ? getAlignmentStatus(vehicle.kmCurrent, vehicle.alignmentBalance.nextKm, vehicle.alignmentBalance.nextDate) : 'unknown'
   const vtvS = vehicle.vtv ? getVTVStatus(vehicle.vtv.expirationDate) : 'unknown'
   const feS = getFireExtinguisherStatus(vehicle.fireExtinguisher?.expirationDate ?? null)
+  const insS = getInsuranceStatus(vehicle.policyExpirationDate ?? null)
 
   const lastWeekly = vehicle.weeklyReviews?.[0]
   const fluidChecks: { item: string; ok: boolean }[] = Array.isArray(lastWeekly?.fluidChecks) ? lastWeekly.fluidChecks : []
@@ -415,6 +420,11 @@ function MaintenanceStatusCard({ vehicle }: { vehicle: any }) {
           label="Matafuego"
           status={feS}
           detail={vehicle.fireExtinguisher ? `Vence ${fmtDate(vehicle.fireExtinguisher.expirationDate)}` : 'Sin registrar'}
+        />
+        <StatusRow
+          label="Seguro"
+          status={insS}
+          detail={vehicle.policyExpirationDate ? `Vence ${fmtDate(vehicle.policyExpirationDate)}` : 'Sin registrar'}
         />
       </div>
 
@@ -1828,6 +1838,202 @@ function ConfigTab({ vehicle, onRefresh }: any) {
       </button>
 
       <TirePressureSection vehicle={vehicle} onRefresh={onRefresh} />
+    </div>
+  )
+}
+
+/* ─── INSURANCE TAB ─── */
+function InsuranceTab({ vehicle, onRefresh }: any) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [form, setForm] = useState({ insuranceCompany: '', policyNumber: '', policyStartDate: '', policyExpirationDate: '' })
+
+  const insuranceS = getInsuranceStatus(vehicle.policyExpirationDate ?? null)
+  const hasInsurance = vehicle.insuranceCompany || vehicle.policyNumber || vehicle.policyExpirationDate
+  const hasPdf = !!vehicle.policyPdfUrl
+
+  const STATUS_LABELS: Record<string, string> = {
+    ok: 'Vigente',
+    warning: 'Próxima a vencer',
+    danger: 'Vencida',
+    unknown: 'Sin registrar',
+  }
+
+  function openEdit() {
+    setForm({
+      insuranceCompany: vehicle.insuranceCompany || '',
+      policyNumber: vehicle.policyNumber || '',
+      policyStartDate: vehicle.policyStartDate ? new Date(vehicle.policyStartDate).toISOString().slice(0, 10) : '',
+      policyExpirationDate: vehicle.policyExpirationDate ? new Date(vehicle.policyExpirationDate).toISOString().slice(0, 10) : '',
+    })
+    setEditing(true)
+  }
+
+  async function saveInsurance(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/vehicles/${vehicle.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        insuranceCompany: form.insuranceCompany || null,
+        policyNumber: form.policyNumber || null,
+        policyStartDate: form.policyStartDate || null,
+        policyExpirationDate: form.policyExpirationDate || null,
+      }),
+    })
+    setSaving(false)
+    setEditing(false)
+    onRefresh()
+  }
+
+  async function uploadPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF'); return }
+    if (file.size > 10 * 1024 * 1024) { alert('El archivo no puede superar los 10 MB'); return }
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch(`/api/vehicles/${vehicle.id}/insurance/pdf`, { method: 'POST', body: fd })
+    if (!res.ok) {
+      const data = await res.json()
+      alert(data.error || 'Error al subir el archivo')
+    }
+    e.target.value = ''
+    setUploading(false)
+    onRefresh()
+  }
+
+  async function deletePdf() {
+    if (!confirm('¿Eliminar la póliza adjunta?')) return
+    await fetch(`/api/vehicles/${vehicle.id}/insurance/pdf`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Status banner */}
+      {vehicle.policyExpirationDate && (
+        <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+          insuranceS === 'danger' ? 'bg-red-500/10 border-red-500/30' :
+          insuranceS === 'warning' ? 'bg-amber-500/10 border-amber-500/30' :
+          'bg-emerald-500/10 border-emerald-500/30'
+        }`}>
+          <Shield size={20} className={
+            insuranceS === 'danger' ? 'text-red-400' :
+            insuranceS === 'warning' ? 'text-amber-400' : 'text-emerald-400'
+          } />
+          <div>
+            <p className={`font-semibold ${
+              insuranceS === 'danger' ? 'text-red-300' :
+              insuranceS === 'warning' ? 'text-amber-300' : 'text-emerald-300'
+            }`}>{STATUS_LABELS[insuranceS]}</p>
+            <p className="text-slate-400 text-sm">
+              Vence el {new Date(vehicle.policyExpirationDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              {insuranceS === 'warning' && ` · ${Math.ceil((new Date(vehicle.policyExpirationDate).getTime() - Date.now()) / 86400000)} días restantes`}
+              {insuranceS === 'danger' && ` · Vencida hace ${Math.abs(Math.ceil((new Date(vehicle.policyExpirationDate).getTime() - Date.now()) / 86400000))} días`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Insurance data */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="section-title">Datos del seguro</h3>
+          {!editing && (
+            <button onClick={openEdit} className="text-xs text-slate-500 hover:text-white transition-colors">
+              {hasInsurance ? 'Editar' : '+ Agregar'}
+            </button>
+          )}
+        </div>
+
+        {editing ? (
+          <form onSubmit={saveInsurance} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label>Compañía aseguradora</label>
+                <input className="input" value={form.insuranceCompany} onChange={e => setForm(f => ({ ...f, insuranceCompany: e.target.value }))} placeholder="ej: Zurich, San Cristóbal..." autoFocus />
+              </div>
+              <div>
+                <label>Número de póliza</label>
+                <input className="input" value={form.policyNumber} onChange={e => setForm(f => ({ ...f, policyNumber: e.target.value }))} placeholder="ej: 12345678" />
+              </div>
+              <div>
+                <label>Fecha de inicio de cobertura</label>
+                <input className="input" type="date" value={form.policyStartDate} onChange={e => setForm(f => ({ ...f, policyStartDate: e.target.value }))} />
+              </div>
+              <div>
+                <label>Fecha de vencimiento</label>
+                <input className="input" type="date" value={form.policyExpirationDate} onChange={e => setForm(f => ({ ...f, policyExpirationDate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => setEditing(false)} className="btn-secondary">Cancelar</button>
+            </div>
+          </form>
+        ) : hasInsurance ? (
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            {vehicle.insuranceCompany && <Row label="Compañía" value={vehicle.insuranceCompany} />}
+            {vehicle.policyNumber && <Row label="N° de póliza" value={vehicle.policyNumber} />}
+            {vehicle.policyStartDate && <Row label="Inicio de cobertura" value={fmtDate(vehicle.policyStartDate)} />}
+            {vehicle.policyExpirationDate && <Row label="Vencimiento" value={fmtDate(vehicle.policyExpirationDate)} />}
+          </div>
+        ) : (
+          <p className="text-slate-600 text-sm">Sin información de seguro registrada</p>
+        )}
+      </div>
+
+      {/* PDF */}
+      <div className="card">
+        <h3 className="section-title mb-4">Póliza digital (PDF)</h3>
+        {hasPdf ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+              <FileText size={20} className="text-blue-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">{vehicle.policyPdfName || 'poliza.pdf'}</p>
+                {vehicle.policyPdfUploadedAt && (
+                  <p className="text-slate-500 text-xs mt-0.5">Cargado el {fmtDate(vehicle.policyPdfUploadedAt)}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href={vehicle.policyPdfUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm flex items-center gap-2">
+                <Eye size={14} />
+                Ver póliza
+              </a>
+              <a href={vehicle.policyPdfUrl} download={vehicle.policyPdfName || 'poliza.pdf'} className="btn-secondary text-sm flex items-center gap-2">
+                <Download size={14} />
+                Descargar
+              </a>
+              <label className="btn-secondary text-sm flex items-center gap-2 cursor-pointer">
+                <Upload size={14} />
+                {uploading ? 'Subiendo...' : 'Reemplazar'}
+                <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={uploadPdf} disabled={uploading} />
+              </label>
+              <button onClick={deletePdf} className="text-slate-600 hover:text-red-400 transition-colors flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg hover:bg-red-500/10">
+                <Trash2 size={14} />
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <FileText size={36} className="text-slate-700 mx-auto mb-3" />
+            <p className="text-slate-400 text-sm mb-4">No hay póliza adjunta</p>
+            <label className="btn-primary text-sm inline-flex items-center gap-2 cursor-pointer">
+              <Upload size={14} />
+              {uploading ? 'Subiendo...' : 'Subir póliza PDF'}
+              <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={uploadPdf} disabled={uploading} />
+            </label>
+            <p className="text-slate-600 text-xs mt-3">Máximo 10 MB · Solo PDF</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

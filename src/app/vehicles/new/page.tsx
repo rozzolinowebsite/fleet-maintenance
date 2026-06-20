@@ -193,7 +193,7 @@ function TrailerRequiredModal({ vehicleId, onDone }: { vehicleId: string; onDone
 
   async function fetchAvailable() {
     setLoading(true)
-    const res = await fetch('/api/trailers')
+    const res = await fetch('/api/acoplados')
     const data = await res.json()
     setTrailers(data.filter((t: AvailableTrailer) => t.trailerType === 'semiremolque' && !t.vehicleId))
     setLoading(false)
@@ -206,7 +206,7 @@ function TrailerRequiredModal({ vehicleId, onDone }: { vehicleId: string; onDone
 
   async function associate(trailerId: string) {
     setSaving(true)
-    await fetch(`/api/trailers/${trailerId}`, {
+    await fetch(`/api/acoplados/${trailerId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vehicleId }),
@@ -218,7 +218,7 @@ function TrailerRequiredModal({ vehicleId, onDone }: { vehicleId: string; onDone
     e.preventDefault()
     setNewError('')
     setSaving(true)
-    const res = await fetch('/api/trailers', {
+    const res = await fetch('/api/acoplados', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

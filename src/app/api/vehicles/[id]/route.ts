@@ -39,6 +39,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(body.weeklyInventoryItems !== undefined && { weeklyInventoryItems: body.weeklyInventoryItems }),
       ...(body.typeId !== undefined && { typeId: body.typeId }),
       ...('warrantyExpiry' in body && { warrantyExpiry: body.warrantyExpiry ? new Date(body.warrantyExpiry) : null }),
+      ...('insuranceCompany' in body && { insuranceCompany: body.insuranceCompany || null }),
+      ...('policyNumber' in body && { policyNumber: body.policyNumber || null }),
+      ...('policyStartDate' in body && { policyStartDate: body.policyStartDate ? new Date(body.policyStartDate) : null }),
+      ...('policyExpirationDate' in body && { policyExpirationDate: body.policyExpirationDate ? new Date(body.policyExpirationDate) : null }),
     },
   })
   return NextResponse.json(vehicle)

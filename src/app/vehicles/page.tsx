@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { getVTVStatus, getOilChangeStatus, getAlignmentStatus, fmtDate, statusDot, statusBg } from '@/lib/utils'
+import { getVTVStatus, getOilChangeStatus, getAlignmentStatus, getInsuranceStatus, fmtDate, statusDot, statusBg } from '@/lib/utils'
 import Link from 'next/link'
 import { Car, Plus, ChevronRight } from 'lucide-react'
 
@@ -40,9 +40,10 @@ export default async function VehiclesPage() {
             const vtvS = v.vtv ? getVTVStatus(v.vtv.expirationDate) : 'unknown'
             const oilS = v.oilChange ? getOilChangeStatus(v.kmCurrent, v.oilChange.nextKm, v.oilChange.nextDate) : 'unknown'
             const alignS = v.alignmentBalance ? getAlignmentStatus(v.kmCurrent, v.alignmentBalance.nextKm, v.alignmentBalance.nextDate) : 'unknown'
-            const worst = [vtvS, oilS, alignS].includes('danger') ? 'danger'
-              : [vtvS, oilS, alignS].includes('warning') ? 'warning'
-              : [vtvS, oilS, alignS].every(s => s === 'ok') ? 'ok' : 'unknown'
+            const insS = getInsuranceStatus(v.policyExpirationDate ?? null)
+            const worst = [vtvS, oilS, alignS, insS].includes('danger') ? 'danger'
+              : [vtvS, oilS, alignS, insS].includes('warning') ? 'warning'
+              : [vtvS, oilS, alignS, insS].every(s => s === 'ok') ? 'ok' : 'unknown'
 
             return (
               <Link
@@ -52,7 +53,7 @@ export default async function VehiclesPage() {
               >
                 <div className={`w-3 h-3 rounded-full shrink-0 ${statusDot(worst)}`} />
 
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 min-w-0">
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-4 min-w-0">
                   <div>
                     <p className="font-bold text-white text-lg leading-tight">{v.plate}</p>
                     <p className="text-slate-400 text-sm">{v.brand} {v.model}</p>
@@ -93,6 +94,16 @@ export default async function VehiclesPage() {
                         {v.alignmentBalance.nextKm
                           ? v.alignmentBalance.nextKm.toLocaleString() + ' km'
                           : fmtDate(v.alignmentBalance.lastDate)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 text-xs">Sin registrar</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-0.5">Seguro</p>
+                    {v.policyExpirationDate ? (
+                      <span className={`text-xs px-2 py-0.5 rounded border ${statusBg(insS)}`}>
+                        {insS === 'danger' ? 'Vencido' : insS === 'warning' ? 'Por vencer' : 'Vigente'}
                       </span>
                     ) : (
                       <span className="text-slate-600 text-xs">Sin registrar</span>

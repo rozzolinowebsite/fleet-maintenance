@@ -1,40 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+const INCLUDE = {
+  vehicle: { select: { id: true, plate: true, brand: true, model: true } },
+  documents: { orderBy: { createdAt: 'desc' } as const },
+  maintenances: { take: 1, orderBy: { date: 'desc' } as const },
+  inspections: { take: 1, orderBy: { date: 'desc' } as const },
+  _count: { select: { maintenances: true, inspections: true } },
+}
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const trailer = await db.trailer.findUnique({
-    where: { id: params.id },
-    include: { vehicle: { select: { id: true, plate: true, brand: true, model: true, type: true } } },
-  })
+  const trailer = await db.trailerUnit.findUnique({ where: { id: params.id }, include: INCLUDE })
   if (!trailer) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(trailer)
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
-  const trailer = await db.trailer.update({
+  const trailer = await db.trailerUnit.update({
     where: { id: params.id },
     data: {
-      ...(body.domain !== undefined && { domain: body.domain.toUpperCase() }),
-      ...(body.brand !== undefined && { brand: body.brand }),
-      ...(body.model !== undefined && { model: body.model }),
-      ...(body.year !== undefined && { year: Number(body.year) }),
-      ...(body.chassisNumber !== undefined && { chassisNumber: body.chassisNumber || null }),
-      ...(body.trailerType !== undefined && { trailerType: body.trailerType }),
-      ...(body.subtype !== undefined && { subtype: body.subtype }),
-      ...(body.axleCount !== undefined && { axleCount: body.axleCount ? Number(body.axleCount) : null }),
-      ...(body.axleConfig !== undefined && { axleConfig: body.axleConfig || null }),
-      ...(body.grossWeight !== undefined && { grossWeight: body.grossWeight ? Number(body.grossWeight) : null }),
-      ...(body.tare !== undefined && { tare: body.tare ? Number(body.tare) : null }),
-      ...(body.notes !== undefined && { notes: body.notes || null }),
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.companyId !== undefined && { companyId: body.companyId || null }),
+      ...(body.patent !== undefined && { patent: body.patent ? body.patent.toUpperCase() : null }),
+      ...(body.brand !== undefined && { brand: body.brand || null }),
+      ...(body.model !== undefined && { model: body.model || null }),
+      ...(body.year !== undefined && { year: body.year ? Number(body.year) : null }),
+      ...(body.serialNumber !== undefined && { serialNumber: body.serialNumber || null }),
+      ...(body.description !== undefined && { description: body.description || null }),
+      ...(body.status !== undefined && { status: body.status }),
       ...('vehicleId' in body && { vehicleId: body.vehicleId }),
     },
-    include: { vehicle: { select: { id: true, plate: true, brand: true, model: true, type: true } } },
+    include: INCLUDE,
   })
   return NextResponse.json(trailer)
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  await db.trailer.delete({ where: { id: params.id } })
+  await db.trailerUnit.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

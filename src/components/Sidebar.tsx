@@ -2,13 +2,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Car, Plus, Users, FileText, LogOut, Menu, X, FlaskConical, Boxes, UserCog } from 'lucide-react'
+import { LayoutDashboard, Car, Plus, Users, FileText, LogOut, Menu, X, FlaskConical, Boxes, UserCog, Package2 } from 'lucide-react'
 import { useUser } from './UserProvider'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/vehicles', label: 'Vehículos', icon: Car, exact: false },
-  { href: '/trailers', label: 'Acoplados', icon: Boxes, exact: false },
+  { href: '/trailers', label: 'Trailers', icon: Package2, exact: false },
+  { href: '/acoplados', label: 'Acoplados', icon: Boxes, exact: false },
   { href: '/drivers', label: 'Conductores', icon: UserCog, exact: false },
   { href: '/reports/weekly-review', label: 'Reporte semanal', icon: FileText, exact: false },
   { href: '/usuarios', label: 'Usuarios', icon: Users, exact: false },

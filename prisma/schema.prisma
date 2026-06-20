@@ -52,6 +52,13 @@ model Vehicle {
   typeId               String?
   type                 VehicleType?      @relation(fields: [typeId], references: [id])
   warrantyExpiry       DateTime?
+  insuranceCompany     String?
+  policyNumber         String?
+  policyStartDate      DateTime?
+  policyExpirationDate DateTime?
+  policyPdfUrl         String?
+  policyPdfName        String?
+  policyPdfUploadedAt  DateTime?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -66,6 +73,7 @@ model Vehicle {
   weeklyReviews    WeeklyReview[]
   links            CustomLink[]
   trailers         Trailer[]
+  trailerUnits     TrailerUnit[]
   drivers          Driver[]
 }
 
@@ -91,6 +99,81 @@ model Trailer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   drivers       Driver[]
+}
+
+model TrailerUnit {
+  id           String               @id @default(cuid())
+  companyId    String?
+  name         String
+  patent       String?
+  brand        String?
+  model        String?
+  year         Int?
+  serialNumber String?
+  description  String?              @db.Text
+  status       String               @default("ACTIVE")
+  vehicleId    String?
+  vehicle      Vehicle?             @relation(fields: [vehicleId], references: [id])
+  documents    TrailerDocument[]
+  maintenances TrailerMaintenance[]
+  inspections  TrailerInspection[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+}
+
+model TrailerMaintenance {
+  id           String      @id @default(cuid())
+  trailerId    String
+  trailer      TrailerUnit @relation(fields: [trailerId], references: [id], onDelete: Cascade)
+  type         String      @default("engrase")
+  date         DateTime
+  responsible  String?
+  observations String?     @db.Text
+  nextDueDate  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model TrailerInspection {
+  id            String      @id @default(cuid())
+  trailerId     String
+  trailer       TrailerUnit @relation(fields: [trailerId], references: [id], onDelete: Cascade)
+  date          DateTime
+  inspector     String?
+  generalResult String      @default("ok")
+  observations  String?     @db.Text
+  tires         String      @default("ok")
+  tiresNote     String?
+  lights        String      @default("ok")
+  lightsNote    String?
+  hitch         String      @default("ok")
+  hitchNote     String?
+  chains        String      @default("ok")
+  chainsNote    String?
+  brakes        String      @default("ok")
+  brakesNote    String?
+  cleaning      String      @default("ok")
+  cleaningNote  String?
+  woodFloor     String      @default("ok")
+  woodFloorNote String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model TrailerDocument {
+  id             String      @id @default(cuid())
+  trailerId      String
+  trailer        TrailerUnit @relation(fields: [trailerId], references: [id], onDelete: Cascade)
+  name           String
+  type           String
+  issueDate      DateTime?
+  expiryDate     DateTime?
+  fileUrl        String?
+  fileName       String?
+  fileUploadedAt DateTime?
+  notes          String?     @db.Text
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model AlignmentBalance {
