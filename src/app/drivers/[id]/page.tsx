@@ -6,6 +6,7 @@ import {
   ArrowLeft, Car, Boxes, AlertTriangle, CheckCircle, Plus, Trash2,
   Pencil, X, Check, UserCog, BookOpen, ClipboardList, Briefcase, Upload,
 } from 'lucide-react'
+import { dateInputValue } from '@/lib/dates'
 
 type Tab = 'resumen' | 'personal' | 'licencia' | 'salud' | 'laboral' | 'operativo' | 'capacitaciones'
 
@@ -47,12 +48,15 @@ function initials(name: string) {
 
 function fmtDate(d: string | Date | null | undefined) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const date = new Date(d)
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0)
+    .toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function daysUntil(d: string | Date | null | undefined): number | null {
   if (!d) return null
-  return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
+  const date = new Date(d)
+  return Math.ceil((new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0).getTime() - Date.now()) / 86400000)
 }
 
 function ExpiryBadge({ date }: { date: string | Date | null | undefined }) {
@@ -335,7 +339,7 @@ function PersonalTab({ driver, onSave, onRefresh }: any) {
     fullName: driver.fullName,
     dni: driver.dni ?? '',
     cuil: driver.cuil ?? '',
-    birthDate: driver.birthDate ? new Date(driver.birthDate).toISOString().split('T')[0] : '',
+    birthDate: dateInputValue(driver.birthDate),
     address: driver.address ?? '',
     phone: driver.phone ?? '',
     emergencyContact: driver.emergencyContact ?? '',
@@ -443,7 +447,7 @@ function LicenciaTab({ driver, onSave, onRefresh }: any) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [cats, setCats] = useState<string[]>(Array.isArray(driver.licenseCategories) ? driver.licenseCategories : [])
-  const [expiry, setExpiry] = useState(driver.licenseExpiry ? new Date(driver.licenseExpiry).toISOString().split('T')[0] : '')
+  const [expiry, setExpiry] = useState(dateInputValue(driver.licenseExpiry))
 
   function toggleCat(c: string) {
     setCats(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
@@ -537,9 +541,9 @@ function SaludTab({ driver, onSave }: any) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    psychoDate: driver.psychoDate ? new Date(driver.psychoDate).toISOString().split('T')[0] : '',
-    psychoExpiry: driver.psychoExpiry ? new Date(driver.psychoExpiry).toISOString().split('T')[0] : '',
-    preOccupDate: driver.preOccupDate ? new Date(driver.preOccupDate).toISOString().split('T')[0] : '',
+    psychoDate: dateInputValue(driver.psychoDate),
+    psychoExpiry: dateInputValue(driver.psychoExpiry),
+    preOccupDate: dateInputValue(driver.preOccupDate),
     preOccupResult: driver.preOccupResult ?? '',
   })
 
@@ -621,7 +625,7 @@ function LaboralTab({ driver, onSave }: any) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     legajo: driver.legajo ?? '',
-    hireDate: driver.hireDate ? new Date(driver.hireDate).toISOString().split('T')[0] : '',
+    hireDate: dateInputValue(driver.hireDate),
     position: driver.position ?? '',
     agreement: driver.agreement ?? '',
     operativeBase: driver.operativeBase ?? '',

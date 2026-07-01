@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
 
 export async function GET() {
   const drivers = await db.driver.findMany({
@@ -22,18 +23,18 @@ export async function POST(req: NextRequest) {
       fullName: body.fullName,
       dni: body.dni || null,
       cuil: body.cuil || null,
-      birthDate: body.birthDate ? new Date(body.birthDate) : null,
+      birthDate: parseDateOnly(body.birthDate),
       address: body.address || null,
       phone: body.phone || null,
       emergencyContact: body.emergencyContact || null,
       licenseCategories: body.licenseCategories ?? [],
-      licenseExpiry: body.licenseExpiry ? new Date(body.licenseExpiry) : null,
-      psychoDate: body.psychoDate ? new Date(body.psychoDate) : null,
-      psychoExpiry: body.psychoExpiry ? new Date(body.psychoExpiry) : null,
-      preOccupDate: body.preOccupDate ? new Date(body.preOccupDate) : null,
+      licenseExpiry: parseDateOnly(body.licenseExpiry),
+      psychoDate: parseDateOnly(body.psychoDate),
+      psychoExpiry: parseDateOnly(body.psychoExpiry),
+      preOccupDate: parseDateOnly(body.preOccupDate),
       preOccupResult: body.preOccupResult || null,
       legajo: body.legajo || null,
-      hireDate: body.hireDate ? new Date(body.hireDate) : null,
+      hireDate: parseDateOnly(body.hireDate),
       position: body.position || null,
       agreement: body.agreement || null,
       operativeBase: body.operativeBase || null,

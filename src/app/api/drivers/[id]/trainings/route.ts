@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
@@ -7,8 +8,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     data: {
       driverId: params.id,
       name: body.name,
-      date: body.date ? new Date(body.date) : null,
-      expiry: body.expiry ? new Date(body.expiry) : null,
+      date: parseDateOnly(body.date),
+      expiry: parseDateOnly(body.expiry),
       notes: body.notes || null,
     },
   })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const driver = await db.driver.findUnique({
@@ -67,18 +68,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(body.fullName !== undefined && { fullName: body.fullName }),
       ...(body.dni !== undefined && { dni: body.dni || null }),
       ...(body.cuil !== undefined && { cuil: body.cuil || null }),
-      ...(body.birthDate !== undefined && { birthDate: body.birthDate ? new Date(body.birthDate) : null }),
+      ...(body.birthDate !== undefined && { birthDate: parseDateOnly(body.birthDate) }),
       ...(body.address !== undefined && { address: body.address || null }),
       ...(body.phone !== undefined && { phone: body.phone || null }),
       ...(body.emergencyContact !== undefined && { emergencyContact: body.emergencyContact || null }),
       ...(body.licenseCategories !== undefined && { licenseCategories: body.licenseCategories }),
-      ...(body.licenseExpiry !== undefined && { licenseExpiry: body.licenseExpiry ? new Date(body.licenseExpiry) : null }),
-      ...(body.psychoDate !== undefined && { psychoDate: body.psychoDate ? new Date(body.psychoDate) : null }),
-      ...(body.psychoExpiry !== undefined && { psychoExpiry: body.psychoExpiry ? new Date(body.psychoExpiry) : null }),
-      ...(body.preOccupDate !== undefined && { preOccupDate: body.preOccupDate ? new Date(body.preOccupDate) : null }),
+      ...(body.licenseExpiry !== undefined && { licenseExpiry: parseDateOnly(body.licenseExpiry) }),
+      ...(body.psychoDate !== undefined && { psychoDate: parseDateOnly(body.psychoDate) }),
+      ...(body.psychoExpiry !== undefined && { psychoExpiry: parseDateOnly(body.psychoExpiry) }),
+      ...(body.preOccupDate !== undefined && { preOccupDate: parseDateOnly(body.preOccupDate) }),
       ...(body.preOccupResult !== undefined && { preOccupResult: body.preOccupResult || null }),
       ...(body.legajo !== undefined && { legajo: body.legajo || null }),
-      ...(body.hireDate !== undefined && { hireDate: body.hireDate ? new Date(body.hireDate) : null }),
+      ...(body.hireDate !== undefined && { hireDate: parseDateOnly(body.hireDate) }),
       ...(body.position !== undefined && { position: body.position || null }),
       ...(body.agreement !== undefined && { agreement: body.agreement || null }),
       ...(body.operativeBase !== undefined && { operativeBase: body.operativeBase || null }),

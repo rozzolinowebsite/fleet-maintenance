@@ -4,6 +4,10 @@ import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+function calendarDate(value: Date) {
+  return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 12, 0, 0)
+}
+
 const STATUS_LABELS: Record<string, string> = {
   active: 'Activo', leave: 'Licencia', vacation: 'Vacaciones',
   suspended: 'Suspendido', terminated: 'Baja',
@@ -22,7 +26,7 @@ function initials(name: string) {
 
 function licenseStatus(expiry: Date | null) {
   if (!expiry) return null
-  const days = Math.ceil((expiry.getTime() - Date.now()) / 86400000)
+  const days = Math.ceil((calendarDate(expiry).getTime() - Date.now()) / 86400000)
   if (days < 0) return { label: 'Vencida', cls: 'text-red-400' }
   if (days <= 30) return { label: `${days}d`, cls: 'text-yellow-400' }
   return { label: `${days}d`, cls: 'text-emerald-400' }
@@ -115,8 +119,8 @@ export default async function DriversPage() {
                     <div className="flex items-center gap-2 text-orange-400">
                       <AlertTriangle size={11} className="shrink-0" />
                       <span>
-                        {lastAccident ? `Accidente ${new Date(lastAccident.date).toLocaleDateString('es-AR')}` :
-                         lastInfraction ? `Infracción ${new Date(lastInfraction.date).toLocaleDateString('es-AR')}` : ''}
+                        {lastAccident ? `Accidente ${calendarDate(lastAccident.date).toLocaleDateString('es-AR')}` :
+                         lastInfraction ? `Infracción ${calendarDate(lastInfraction.date).toLocaleDateString('es-AR')}` : ''}
                       </span>
                     </div>
                   )}
