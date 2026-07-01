@@ -11,3 +11,14 @@ export function dateInputValue(value: Date | string | null | undefined): string 
   if (Number.isNaN(date.getTime())) return ''
   return date.toISOString().slice(0, 10)
 }
+
+export function addOneYear(value: Date): Date {
+  const next = new Date(value)
+  next.setUTCFullYear(next.getUTCFullYear() + 1)
+  return next
+}
+
+export function addOneYearInput(value: string | null | undefined): string {
+  const date = parseDateOnly(value)
+  return date ? dateInputValue(addOneYear(date)) : ''
+}

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { useUser } from './UserProvider'
 import { fmtDate } from '@/lib/utils'
-import { dateInputValue } from '@/lib/dates'
+import { addOneYearInput, dateInputValue } from '@/lib/dates'
 
 /* ── Types ── */
 type ShortcutDef = {
@@ -506,15 +506,15 @@ function MaintOilForm({ vehicle, onDone }: { vehicle: any; onDone: () => void })
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     lastKm: oc?.lastKm?.toString() || vehicle.kmCurrent.toString(),
-    lastDate: oc?.lastDate ? new Date(oc.lastDate).toISOString().slice(0, 10) : today,
-    kmInterval: oc?.kmInterval?.toString() || '10000',
-    nextDate: oc?.nextDate ? new Date(oc.nextDate).toISOString().slice(0, 10) : '',
+    lastDate: dateInputValue(oc?.lastDate) || today,
     oilType: oc?.oilType || '',
     airFilterCleaned: oc?.airFilterCleaned ?? false,
     airFilterChanged: oc?.airFilterChanged ?? false,
     fuelFilterChanged: oc?.fuelFilterChanged ?? false,
     notes: oc?.notes || '',
   })
+  const nextKm = Number(form.lastKm || 0) + 10000
+  const nextDate = addOneYearInput(form.lastDate)
   async function save(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     await fetch(`/api/vehicles/${vehicle.id}/oil-change`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
@@ -523,10 +523,10 @@ function MaintOilForm({ vehicle, onDone }: { vehicle: any; onDone: () => void })
   return (
     <form onSubmit={save} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div><label>Km del último cambio *</label><input className="input" type="number" value={form.lastKm} onChange={e => setForm(f => ({ ...f, lastKm: e.target.value }))} required /></div>
-        <div><label>Fecha del último cambio *</label><input className="input" type="date" value={form.lastDate} onChange={e => setForm(f => ({ ...f, lastDate: e.target.value }))} required /></div>
-        <div><label>Intervalo (km)</label><input className="input" type="number" value={form.kmInterval} onChange={e => setForm(f => ({ ...f, kmInterval: e.target.value }))} /></div>
-        <div><label>Próximo cambio (fecha)</label><input className="input" type="date" value={form.nextDate} onChange={e => setForm(f => ({ ...f, nextDate: e.target.value }))} /></div>
+        <div><label>KM del servicio *</label><input className="input" type="number" value={form.lastKm} onChange={e => setForm(f => ({ ...f, lastKm: e.target.value }))} required /></div>
+        <div><label>KM del próximo servicio</label><input className="input" type="text" value={Number.isFinite(nextKm) ? nextKm.toLocaleString('es-AR') : ''} readOnly /></div>
+        <div><label>Fecha del servicio *</label><input className="input" type="date" value={form.lastDate} onChange={e => setForm(f => ({ ...f, lastDate: e.target.value }))} required /></div>
+        <div><label>Fecha del próximo servicio</label><input className="input" type="date" value={nextDate} readOnly /></div>
         <div className="col-span-2"><label>Tipo de aceite</label><input className="input" value={form.oilType} onChange={e => setForm(f => ({ ...f, oilType: e.target.value }))} placeholder="ej: 5W-40 sintético" /></div>
         <div className="col-span-2">
           <p className="text-slate-400 text-xs font-medium mb-2">Filtro de aire</p>
