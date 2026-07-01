@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Skip API routes and static assets
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next') || pathname === '/favicon.ico') {
+  // Skip API routes and static/user-uploaded assets
+  if (pathname.startsWith('/api/') || pathname.startsWith('/_next') || pathname.startsWith('/uploads/') || pathname === '/favicon.ico') {
     return NextResponse.next()
   }
 
@@ -17,5 +17,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|uploads|favicon.ico).*)'],
 }
