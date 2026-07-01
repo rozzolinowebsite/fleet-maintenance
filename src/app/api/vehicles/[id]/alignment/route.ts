@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
+
+const ALIGNMENT_INTERVAL_KM = 10000
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
+  const lastKm = Number(body.lastKm)
+  const lastDate = parseDateOnly(body.lastDate)
+  if (!Number.isFinite(lastKm)) return NextResponse.json({ error: 'Km del último servicio requerido' }, { status: 400 })
+  if (!lastDate) return NextResponse.json({ error: 'Fecha del último servicio requerida' }, { status: 400 })
+
   const data = {
-    lastKm: Number(body.lastKm),
-    lastDate: new Date(body.lastDate),
-    kmInterval: body.kmInterval ? Number(body.kmInterval) : 20000,
-    nextKm: body.nextKm ? Number(body.nextKm) : null,
-    nextDate: body.nextDate ? new Date(body.nextDate) : null,
+    lastKm,
+    lastDate,
+    kmInterval: ALIGNMENT_INTERVAL_KM,
+    nextKm: lastKm + ALIGNMENT_INTERVAL_KM,
+    nextDate: null,
     notes: body.notes || null,
   }
   const result = await db.alignmentBalance.upsert({

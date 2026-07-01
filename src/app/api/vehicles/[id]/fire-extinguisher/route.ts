@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
+  const expirationDate = parseDateOnly(body.expirationDate)
+  if (!expirationDate) return NextResponse.json({ error: 'Fecha de vencimiento requerida' }, { status: 400 })
+
   const record = await db.fireExtinguisher.upsert({
     where: { vehicleId: params.id },
     update: {
-      expirationDate: new Date(body.expirationDate),
+      expirationDate,
       notes: body.notes ?? null,
     },
     create: {
       vehicleId: params.id,
-      expirationDate: new Date(body.expirationDate),
+      expirationDate,
       notes: body.notes ?? null,
     },
   })

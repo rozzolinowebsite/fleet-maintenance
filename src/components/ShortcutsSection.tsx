@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useUser } from './UserProvider'
 import { fmtDate } from '@/lib/utils'
+import { dateInputValue } from '@/lib/dates'
 
 /* ── Types ── */
 type ShortcutDef = {
@@ -554,12 +555,10 @@ function MaintAlignForm({ vehicle, onDone }: { vehicle: any; onDone: () => void 
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     lastKm: ab?.lastKm?.toString() || vehicle.kmCurrent.toString(),
-    lastDate: ab?.lastDate ? new Date(ab.lastDate).toISOString().slice(0, 10) : today,
-    kmInterval: ab?.kmInterval?.toString() || '20000',
-    nextKm: ab?.nextKm?.toString() || '',
-    nextDate: ab?.nextDate ? new Date(ab.nextDate).toISOString().slice(0, 10) : '',
+    lastDate: dateInputValue(ab?.lastDate) || today,
     notes: ab?.notes || '',
   })
+  const nextKm = Number(form.lastKm || 0) + 10000
   async function save(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     await fetch(`/api/vehicles/${vehicle.id}/alignment`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
@@ -568,11 +567,9 @@ function MaintAlignForm({ vehicle, onDone }: { vehicle: any; onDone: () => void 
   return (
     <form onSubmit={save} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div><label>Km del último servicio *</label><input className="input" type="number" value={form.lastKm} onChange={e => setForm(f => ({ ...f, lastKm: e.target.value }))} required /></div>
         <div><label>Fecha del último servicio *</label><input className="input" type="date" value={form.lastDate} onChange={e => setForm(f => ({ ...f, lastDate: e.target.value }))} required /></div>
-        <div><label>Intervalo (km)</label><input className="input" type="number" value={form.kmInterval} onChange={e => setForm(f => ({ ...f, kmInterval: e.target.value }))} /></div>
-        <div><label>Próximo (km)</label><input className="input" type="number" value={form.nextKm} onChange={e => setForm(f => ({ ...f, nextKm: e.target.value }))} /></div>
-        <div><label>Próximo (fecha)</label><input className="input" type="date" value={form.nextDate} onChange={e => setForm(f => ({ ...f, nextDate: e.target.value }))} /></div>
+        <div><label>Km del último servicio *</label><input className="input" type="number" value={form.lastKm} onChange={e => setForm(f => ({ ...f, lastKm: e.target.value }))} required /></div>
+        <div><label>Próximo (km)</label><input className="input" type="text" value={Number.isFinite(nextKm) ? nextKm.toLocaleString('es-AR') : ''} readOnly /></div>
         <div className="col-span-2"><label>Notas</label><input className="input" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
       </div>
       <div className="flex gap-3 pt-1">
@@ -588,8 +585,8 @@ function MaintVTVForm({ vehicle, onDone }: { vehicle: any; onDone: () => void })
   const today = new Date().toISOString().slice(0, 10)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    expirationDate: vtv?.expirationDate ? new Date(vtv.expirationDate).toISOString().slice(0, 10) : '',
-    lastDate: vtv?.lastDate ? new Date(vtv.lastDate).toISOString().slice(0, 10) : today,
+    expirationDate: dateInputValue(vtv?.expirationDate),
+    lastDate: dateInputValue(vtv?.lastDate) || today,
     notes: vtv?.notes || '',
   })
   async function save(e: React.FormEvent) {
@@ -616,7 +613,7 @@ function MaintFEForm({ vehicle, onDone }: { vehicle: any; onDone: () => void }) 
   const fe = vehicle.fireExtinguisher
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    expirationDate: fe?.expirationDate ? new Date(fe.expirationDate).toISOString().slice(0, 10) : '',
+    expirationDate: dateInputValue(fe?.expirationDate),
     notes: fe?.notes || '',
   })
   async function save(e: React.FormEvent) {
