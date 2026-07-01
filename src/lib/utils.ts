@@ -3,9 +3,14 @@ import { es } from 'date-fns/locale'
 
 export type StatusLevel = 'ok' | 'warning' | 'danger' | 'unknown'
 
+function calendarDate(value: Date | string) {
+  const date = new Date(value)
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0)
+}
+
 export function getVTVStatus(expirationDate: Date | string | null): StatusLevel {
   if (!expirationDate) return 'unknown'
-  const days = differenceInDays(new Date(expirationDate), new Date())
+  const days = differenceInDays(calendarDate(expirationDate), new Date())
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'ok'
@@ -21,7 +26,7 @@ export function getOilChangeStatus(
   if (kmLeft < 0) return 'danger'
   if (kmLeft <= 500) return 'warning'
   if (nextDate) {
-    const days = differenceInDays(new Date(nextDate), new Date())
+    const days = differenceInDays(calendarDate(nextDate), new Date())
     if (days < 0) return 'danger'
     if (days <= 15) return 'warning'
   }
@@ -69,7 +74,7 @@ export function fmtKm(km: number) {
 
 export function fmtDate(d: Date | string | null) {
   if (!d) return '—'
-  return format(new Date(d), 'dd/MM/yyyy', { locale: es })
+  return format(calendarDate(d), 'dd/MM/yyyy', { locale: es })
 }
 
 export function getFluidStatus(
@@ -85,7 +90,7 @@ export function getFluidStatus(
   }
   if (fluid.expiryMode === 'date' || fluid.expiryMode === 'both') {
     if (fluid.nextDate) {
-      const days = differenceInDays(new Date(fluid.nextDate), new Date())
+      const days = differenceInDays(calendarDate(fluid.nextDate), new Date())
       if (days < 0) return 'danger'
       if (days <= 15) return 'warning'
     }
@@ -103,7 +108,7 @@ export function getAlignmentStatus(
 
 export function getFireExtinguisherStatus(expirationDate: Date | string | null): StatusLevel {
   if (!expirationDate) return 'unknown'
-  const days = differenceInDays(new Date(expirationDate), new Date())
+  const days = differenceInDays(calendarDate(expirationDate), new Date())
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'ok'
@@ -111,7 +116,7 @@ export function getFireExtinguisherStatus(expirationDate: Date | string | null):
 
 export function getInsuranceStatus(policyExpirationDate: Date | string | null): StatusLevel {
   if (!policyExpirationDate) return 'unknown'
-  const days = differenceInDays(new Date(policyExpirationDate), new Date())
+  const days = differenceInDays(calendarDate(policyExpirationDate), new Date())
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'ok'
@@ -119,7 +124,7 @@ export function getInsuranceStatus(policyExpirationDate: Date | string | null): 
 
 export function getDocumentStatus(expiryDate: Date | string | null): StatusLevel {
   if (!expiryDate) return 'unknown'
-  const days = differenceInDays(new Date(expiryDate), new Date())
+  const days = differenceInDays(calendarDate(expiryDate), new Date())
   if (days < 0) return 'danger'
   if (days <= 30) return 'warning'
   return 'ok'
