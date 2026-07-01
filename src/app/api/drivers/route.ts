@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -39,5 +40,6 @@ export async function POST(req: NextRequest) {
       status: body.status || 'active',
     },
   })
+  revalidatePath('/drivers')
   return NextResponse.json(driver, { status: 201 })
 }

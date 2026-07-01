@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { Plus, UserCog, Car, Boxes, AlertTriangle } from 'lucide-react'
 import { db } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 const STATUS_LABELS: Record<string, string> = {
   active: 'Activo', leave: 'Licencia', vacation: 'Vacaciones',
   suspended: 'Suspendido', terminated: 'Baja',
