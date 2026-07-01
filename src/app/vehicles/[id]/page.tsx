@@ -17,12 +17,13 @@ import { addOneYearInput, dateInputValue } from '@/lib/dates'
 import StatusBadge from '@/components/StatusBadge'
 import QRCodeDisplay from '@/components/QRCodeDisplay'
 
-type Tab = 'overview' | 'insurance' | 'maintenance' | 'fluids' | 'tools' | 'reviews' | 'links' | 'config'
+type Tab = 'overview' | 'insurance' | 'maintenance' | 'repairs' | 'fluids' | 'tools' | 'reviews' | 'links' | 'config'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'General', icon: <Car size={15} /> },
   { id: 'insurance', label: 'Seguro', icon: <Shield size={15} /> },
   { id: 'maintenance', label: 'Mantenimiento', icon: <Settings size={15} /> },
+  { id: 'repairs', label: 'Reparaciones', icon: <Wrench size={15} /> },
   { id: 'fluids', label: 'Fluidos', icon: <Droplets size={15} /> },
   { id: 'tools', label: 'Herramientas', icon: <Wrench size={15} /> },
   { id: 'reviews', label: 'Revisiones', icon: <ClipboardList size={15} /> },
@@ -135,6 +136,7 @@ export default function VehicleDetailPage() {
       {tab === 'overview' && <OverviewTab vehicle={vehicle} onSave={saveField} onRefresh={fetchVehicle} />}
       {tab === 'insurance' && <InsuranceTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'maintenance' && <MaintenanceTab vehicle={vehicle} vtvS={vtvS} oilS={oilS} alignS={alignS} onRefresh={fetchVehicle} />}
+      {tab === 'repairs' && <RepairsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'fluids' && <FluidsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'tools' && <ToolsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
       {tab === 'reviews' && <ReviewsTab vehicle={vehicle} onRefresh={fetchVehicle} />}
@@ -1195,6 +1197,158 @@ function TirePressureSection({ vehicle, onRefresh }: any) {
 }
 
 /* ─── TOOLS TAB ─── */
+function RepairsTab({ vehicle, onRefresh }: any) {
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    date: dateInputValue(new Date()),
+    title: '',
+    status: 'open',
+    mileage: vehicle.kmCurrent?.toString() ?? '',
+    cost: '',
+    responsible: '',
+    description: '',
+  })
+
+  const statusMap: Record<string, { label: string; cls: string }> = {
+    open: { label: 'Pendiente', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+    in_progress: { label: 'En curso', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+    done: { label: 'Resuelta', cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  }
+
+  async function addRepair(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/vehicles/${vehicle.id}/repairs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    setSaving(false)
+    setShowForm(false)
+    setForm({ date: dateInputValue(new Date()), title: '', status: 'open', mileage: vehicle.kmCurrent?.toString() ?? '', cost: '', responsible: '', description: '' })
+    onRefresh()
+  }
+
+  async function updateRepair(repairId: string, status: string) {
+    await fetch(`/api/vehicles/${vehicle.id}/repairs/${repairId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    onRefresh()
+  }
+
+  async function deleteRepair(repairId: string) {
+    if (!confirm('Eliminar esta reparacion?')) return
+    await fetch(`/api/vehicles/${vehicle.id}/repairs/${repairId}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  const repairs = vehicle.repairs ?? []
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-white">
+          Reparaciones <span className="text-slate-500 font-normal text-sm">({repairs.length})</span>
+        </h2>
+        <button onClick={() => setShowForm(v => !v)} className="btn-primary flex items-center gap-2">
+          <Plus size={15} />
+          Registrar reparacion
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card">
+          <h3 className="section-title">Nueva reparacion</h3>
+          <form onSubmit={addRepair} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label>Fecha *</label>
+                <input className="input" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
+              </div>
+              <div>
+                <label>Estado</label>
+                <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                  <option value="open">Pendiente</option>
+                  <option value="in_progress">En curso</option>
+                  <option value="done">Resuelta</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label>Detalle *</label>
+                <input className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ej: Cambio de ruleman delantero" required autoFocus />
+              </div>
+              <div>
+                <label>Kilometraje</label>
+                <input className="input" type="number" min="0" value={form.mileage} onChange={e => setForm(f => ({ ...f, mileage: e.target.value }))} />
+              </div>
+              <div>
+                <label>Costo</label>
+                <input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="Opcional" />
+              </div>
+              <div className="sm:col-span-2">
+                <label>Responsable / taller</label>
+                <input className="input" value={form.responsible} onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label>Observaciones</label>
+                <textarea className="input h-24 resize-none" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {repairs.length === 0 ? (
+        <div className="card text-center py-10">
+          <Wrench size={36} className="text-slate-700 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">No hay reparaciones registradas.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {repairs.map((r: any) => (
+            <div key={r.id} className="card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className={`text-xs px-2 py-0.5 rounded border ${statusMap[r.status]?.cls ?? statusMap.open.cls}`}>
+                      {statusMap[r.status]?.label ?? r.status}
+                    </span>
+                    <span className="text-white font-semibold">{r.title}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <span>{fmtDate(r.date)}</span>
+                    {r.mileage != null && <span>{r.mileage.toLocaleString()} km</span>}
+                    {r.cost != null && <span>${Number(r.cost).toLocaleString('es-AR')}</span>}
+                    {r.responsible && <span>{r.responsible}</span>}
+                  </div>
+                  {r.description && <p className="text-slate-400 text-sm mt-2">{r.description}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {r.status !== 'done' && (
+                    <button onClick={() => updateRepair(r.id, r.status === 'open' ? 'in_progress' : 'done')} className="text-xs text-blue-400 hover:text-blue-300">
+                      {r.status === 'open' ? 'Iniciar' : 'Resolver'}
+                    </button>
+                  )}
+                  <button onClick={() => deleteRepair(r.id)} className="text-slate-600 hover:text-red-400 transition-colors">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ToolsTab({ vehicle, onRefresh }: any) {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)

@@ -6,7 +6,8 @@ const INCLUDE = {
   documents: { orderBy: { createdAt: 'desc' } as const },
   maintenances: { take: 1, orderBy: { date: 'desc' } as const },
   inspections: { take: 1, orderBy: { date: 'desc' } as const },
-  _count: { select: { maintenances: true, inspections: true } },
+  repairs: { take: 10, orderBy: { date: 'desc' } as const },
+  _count: { select: { maintenances: true, inspections: true, repairs: true } },
 }
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {

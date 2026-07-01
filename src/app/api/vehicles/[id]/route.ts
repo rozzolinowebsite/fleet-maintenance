@@ -17,6 +17,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
       dailyReviews: { orderBy: { date: 'desc' }, take: 10, include: { user: true } },
       weeklyReviews: { orderBy: { weekStart: 'desc' }, take: 5, include: { user: true } },
       links: { orderBy: { order: 'asc' } },
+      repairs: { orderBy: { date: 'desc' } },
     },
   })
   if (!vehicle) return NextResponse.json({ error: 'Not found' }, { status: 404 })

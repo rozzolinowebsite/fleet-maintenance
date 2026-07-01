@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { getDocumentStatus, fmtDate, statusBg, StatusLevel } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
+import { dateInputValue } from '@/lib/dates'
 
 const DOC_TYPES: Record<string, string> = {
   seguro: 'Seguro',
@@ -65,6 +66,11 @@ type TrailerMaintenance = {
   responsible: string | null; observations: string | null
   nextDueDate: string | null; createdAt: string
 }
+type TrailerRepair = {
+  id: string; date: string; title: string; status: string
+  cost: number | null; responsible: string | null; description: string | null
+  createdAt: string
+}
 type TrailerInspection = {
   id: string; date: string; inspector: string | null
   generalResult: string; observations: string | null
@@ -85,8 +91,9 @@ type TrailerUnit = {
   vehicleId: string | null; vehicle: Vehicle | null
   documents: TrailerDocument[]
   maintenances: TrailerMaintenance[]
+  repairs: TrailerRepair[]
   inspections: TrailerInspection[]
-  _count: { maintenances: number; inspections: number }
+  _count: { maintenances: number; inspections: number; repairs: number }
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -153,7 +160,7 @@ export default function TrailerUnitDetailPage() {
   const router = useRouter()
   const [trailer, setTrailer] = useState<TrailerUnit | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'general' | 'docs' | 'maintenance' | 'inspections'>('general')
+  const [tab, setTab] = useState<'general' | 'docs' | 'maintenance' | 'repairs' | 'inspections'>('general')
 
   // General
   const [editing, setEditing] = useState(false)
@@ -178,6 +185,13 @@ export default function TrailerUnitDetailPage() {
   const [showAddMnt, setShowAddMnt] = useState(false)
   const [mntForm, setMntForm] = useState({ type: 'engrase', date: '', responsible: '', observations: '', nextDueDate: '' })
   const [savingMnt, setSavingMnt] = useState(false)
+
+  // Repairs
+  const [repairs, setRepairs] = useState<TrailerRepair[] | null>(null)
+  const [repairsLoading, setRepairsLoading] = useState(false)
+  const [showAddRepair, setShowAddRepair] = useState(false)
+  const [repairForm, setRepairForm] = useState({ date: dateInputValue(new Date()), title: '', status: 'open', cost: '', responsible: '', description: '' })
+  const [savingRepair, setSavingRepair] = useState(false)
 
   // Inspections
   const [inspections, setInspections] = useState<TrailerInspection[] | null>(null)
@@ -213,7 +227,14 @@ export default function TrailerUnitDetailPage() {
         .then(data => { setInspections(data); setInspectionsLoading(false) })
         .catch(() => setInspectionsLoading(false))
     }
-  }, [tab, id, maintenances, inspections])
+    if (tab === 'repairs' && repairs === null && id) {
+      setRepairsLoading(true)
+      fetch(`/api/trailers/${id}/repairs`)
+        .then(r => r.json())
+        .then(data => { setRepairs(data); setRepairsLoading(false) })
+        .catch(() => setRepairsLoading(false))
+    }
+  }, [tab, id, maintenances, inspections, repairs])
 
   async function loadVehicles() {
     const res = await fetch('/api/vehicles')
@@ -323,6 +344,40 @@ export default function TrailerUnitDetailPage() {
     load()
   }
 
+  async function addRepair(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingRepair(true)
+    try {
+      await fetch(`/api/trailers/${id}/repairs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(repairForm),
+      })
+      setShowAddRepair(false)
+      setRepairForm({ date: dateInputValue(new Date()), title: '', status: 'open', cost: '', responsible: '', description: '' })
+      const res = await fetch(`/api/trailers/${id}/repairs`)
+      if (res.ok) setRepairs(await res.json())
+      load()
+    } finally { setSavingRepair(false) }
+  }
+
+  async function updateRepair(repairId: string, status: string) {
+    await fetch(`/api/trailers/${id}/repairs/${repairId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    setRepairs(prev => prev ? prev.map(r => r.id === repairId ? { ...r, status } : r) : prev)
+    load()
+  }
+
+  async function deleteRepair(repairId: string) {
+    if (!confirm('Eliminar esta reparacion?')) return
+    await fetch(`/api/trailers/${id}/repairs/${repairId}`, { method: 'DELETE' })
+    setRepairs(prev => prev ? prev.filter(r => r.id !== repairId) : prev)
+    load()
+  }
+
   async function addInspection(e: React.FormEvent) {
     e.preventDefault()
     setSavingInsp(true)
@@ -421,6 +476,7 @@ export default function TrailerUnitDetailPage() {
     ['general', 'General'],
     ['docs', `Documentos (${trailer.documents.length})`],
     ['maintenance', `Mantenimiento (${trailer._count.maintenances})`],
+    ['repairs', `Reparaciones (${trailer._count.repairs})`],
     ['inspections', `Inspecciones (${trailer._count.inspections})`],
   ] as const
 
@@ -953,6 +1009,113 @@ export default function TrailerUnitDetailPage() {
       )}
 
       {/* ── INSPECTIONS TAB ── */}
+      {tab === 'repairs' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-slate-400 text-sm">
+              {repairs ? `${repairs.length} reparacion${repairs.length !== 1 ? 'es' : ''}` : ''}
+            </p>
+            <button
+              onClick={() => { setRepairForm(f => ({ ...f, date: dateInputValue(new Date()) })); setShowAddRepair(v => !v) }}
+              className="btn-primary flex items-center gap-1.5"
+            >
+              <Plus size={15} /> Registrar reparacion
+            </button>
+          </div>
+
+          {showAddRepair && (
+            <div className="card">
+              <h3 className="section-title">Nueva reparacion</h3>
+              <form onSubmit={addRepair} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label>Fecha *</label>
+                    <input className="input" type="date" value={repairForm.date} onChange={e => setRepairForm(f => ({ ...f, date: e.target.value }))} required />
+                  </div>
+                  <div>
+                    <label>Estado</label>
+                    <select className="input" value={repairForm.status} onChange={e => setRepairForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="open">Pendiente</option>
+                      <option value="in_progress">En curso</option>
+                      <option value="done">Resuelta</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label>Detalle *</label>
+                    <input className="input" value={repairForm.title} onChange={e => setRepairForm(f => ({ ...f, title: e.target.value }))} placeholder="Ej: Reparacion de luces traseras" required autoFocus />
+                  </div>
+                  <div>
+                    <label>Costo</label>
+                    <input className="input" type="number" min="0" step="0.01" value={repairForm.cost} onChange={e => setRepairForm(f => ({ ...f, cost: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label>Responsable / taller</label>
+                    <input className="input" value={repairForm.responsible} onChange={e => setRepairForm(f => ({ ...f, responsible: e.target.value }))} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label>Observaciones</label>
+                    <textarea className="input h-24 resize-none" value={repairForm.description} onChange={e => setRepairForm(f => ({ ...f, description: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button type="submit" className="btn-primary" disabled={savingRepair}>{savingRepair ? 'Guardando...' : 'Guardar'}</button>
+                  <button type="button" onClick={() => setShowAddRepair(false)} className="btn-secondary">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {repairsLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-slate-400 text-sm">Cargando...</p>
+            </div>
+          ) : repairs?.length === 0 ? (
+            <div className="card text-center py-12">
+              <Wrench size={40} className="text-slate-700 mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">Sin reparaciones registradas.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(repairs ?? []).map(rep => {
+                const s = {
+                  open: { label: 'Pendiente', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+                  in_progress: { label: 'En curso', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+                  done: { label: 'Resuelta', cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+                }[rep.status] ?? { label: rep.status, cls: 'bg-slate-700/50 text-slate-400 border-slate-600' }
+                return (
+                  <div key={rep.id} className="card p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`text-xs px-2 py-0.5 rounded border ${s.cls}`}>{s.label}</span>
+                          <span className="text-white font-semibold">{rep.title}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                          <span>{fmtDate(rep.date)}</span>
+                          {rep.cost != null && <span>${Number(rep.cost).toLocaleString('es-AR')}</span>}
+                          {rep.responsible && <span>{rep.responsible}</span>}
+                        </div>
+                        {rep.description && <p className="text-slate-400 text-sm mt-2">{rep.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {rep.status !== 'done' && (
+                          <button onClick={() => updateRepair(rep.id, rep.status === 'open' ? 'in_progress' : 'done')} className="text-xs text-blue-400 hover:text-blue-300">
+                            {rep.status === 'open' ? 'Iniciar' : 'Resolver'}
+                          </button>
+                        )}
+                        <button onClick={() => deleteRepair(rep.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'inspections' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">

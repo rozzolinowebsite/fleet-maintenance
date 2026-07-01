@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { getVTVStatus, getOilChangeStatus, getAlignmentStatus, getInsuranceStatus, getDocumentStatus, fmtDate, statusDot, statusBg } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 import Link from 'next/link'
-import { Car, AlertTriangle, Clock, CheckCircle2, Plus, Shield, Package2 } from 'lucide-react'
+import { Car, AlertTriangle, Clock, CheckCircle2, Plus, Shield, Package2, UserCog } from 'lucide-react'
 import ShortcutsSection from '@/components/ShortcutsSection'
 
 export const revalidate = 0
@@ -18,8 +18,13 @@ export default async function DashboardPage() {
     orderBy: { name: 'asc' },
   })
 
+  const drivers = await db.driver.findMany({
+    orderBy: { fullName: 'asc' },
+  })
+
   type Alert = {
-    vehicleId: string
+    vehicleId?: string
+    href?: string
     plate: string
     label: string
     message: string
@@ -68,6 +73,16 @@ export default async function DashboardPage() {
     }
   }
 
+  for (const d of drivers) {
+    if (!d.licenseExpiry) continue
+    const days = differenceInDays(new Date(d.licenseExpiry), new Date())
+    if (days < 0) {
+      alerts.push({ href: `/drivers/${d.id}`, plate: 'Licencia', label: d.fullName, message: `Licencia vencida el ${fmtDate(d.licenseExpiry)}`, level: 'danger' })
+    } else if (days <= 30) {
+      alerts.push({ href: `/drivers/${d.id}`, plate: 'Licencia', label: d.fullName, message: `Licencia vence en ${days} dÃ­as (${fmtDate(d.licenseExpiry)})`, level: 'warning' })
+    }
+  }
+
   const expiringPolicies = vehicles
     .filter(v => v.policyExpirationDate)
     .map(v => ({
@@ -100,7 +115,7 @@ export default async function DashboardPage() {
 
   const dangerCount = alerts.filter(a => a.level === 'danger').length
   const warningCount = alerts.filter(a => a.level === 'warning').length
-  const okCount = vehicles.length - new Set(alerts.filter(a => a.level === 'danger').map(a => a.vehicleId)).size
+  const okCount = vehicles.length - new Set(alerts.filter(a => a.level === 'danger' && a.vehicleId).map(a => a.vehicleId)).size
 
   return (
     <div className="space-y-6">
@@ -118,7 +133,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="card">
           <div className="flex items-center justify-between mb-2">
             <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Vehículos</p>
@@ -135,6 +150,15 @@ export default async function DashboardPage() {
           </div>
           <p className="text-3xl font-bold text-white">{trailerUnits.length}</p>
           <p className="text-slate-500 text-xs mt-1">{trailerUnits.filter(t => t.status === 'ACTIVE').length} activos</p>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Conductores</p>
+            <UserCog size={18} className="text-cyan-400" />
+          </div>
+          <p className="text-3xl font-bold text-white">{drivers.length}</p>
+          <p className="text-slate-500 text-xs mt-1">licencias controladas</p>
         </div>
 
         <div className="card">
@@ -167,7 +191,7 @@ export default async function DashboardPage() {
             {alerts.map((a, i) => (
               <Link
                 key={i}
-                href={`/vehicles/${a.vehicleId}`}
+                href={a.href ?? `/vehicles/${a.vehicleId}`}
                 className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors group"
               >
                 <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${a.level === 'danger' ? 'bg-red-500' : 'bg-amber-500'}`} />
