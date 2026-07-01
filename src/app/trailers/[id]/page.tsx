@@ -68,7 +68,11 @@ type TrailerMaintenance = {
 }
 type TrailerRepair = {
   id: string; date: string; title: string; status: string
-  cost: number | null; responsible: string | null; description: string | null
+  cost: number | null; materialCost: number | null; laborCost: number | null
+  responsible: string | null; repairerOther: string | null
+  repairerUser: { id: string; name: string } | null
+  registeredBy: { id: string; name: string } | null
+  description: string | null
   createdAt: string
 }
 type TrailerInspection = {
@@ -119,6 +123,27 @@ function StatusChip({ label, status, note }: { label: string; status: string; no
         <p className={`text-sm font-semibold ${c.text}`}>{label}</p>
       </div>
       <p className="text-xs text-slate-500 pl-4 leading-tight">{note}</p>
+    </div>
+  )
+}
+
+function FilePreviewModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  const isPdf = url.toLowerCase().includes('.pdf')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-5xl h-[88vh] shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+          <h2 className="font-semibold text-white">{title}</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="flex-1 min-h-0 bg-slate-950 rounded-b-2xl overflow-hidden">
+          {isPdf ? <iframe src={url} className="w-full h-full" title={title} /> : (
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img src={url} alt={title} className="max-w-full max-h-full object-contain rounded-lg" />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -177,6 +202,7 @@ export default function TrailerUnitDetailPage() {
   const [savingDoc, setSavingDoc] = useState(false)
   const [docError, setDocError] = useState('')
   const [uploadingFile, setUploadingFile] = useState<string | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<TrailerDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Maintenance
@@ -190,8 +216,9 @@ export default function TrailerUnitDetailPage() {
   const [repairs, setRepairs] = useState<TrailerRepair[] | null>(null)
   const [repairsLoading, setRepairsLoading] = useState(false)
   const [showAddRepair, setShowAddRepair] = useState(false)
-  const [repairForm, setRepairForm] = useState({ date: dateInputValue(new Date()), title: '', status: 'open', cost: '', responsible: '', description: '' })
+  const [repairForm, setRepairForm] = useState({ date: dateInputValue(new Date()), title: '', status: 'open', materialCost: '', laborCost: '', repairerUserId: '', repairerOther: '', description: '' })
   const [savingRepair, setSavingRepair] = useState(false)
+  const [users, setUsers] = useState<any[]>([])
 
   // Inspections
   const [inspections, setInspections] = useState<TrailerInspection[] | null>(null)
@@ -211,6 +238,10 @@ export default function TrailerUnitDetailPage() {
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => setUsers([]))
+  }, [])
 
   useEffect(() => {
     if (tab === 'maintenance' && maintenances === null && id) {
@@ -354,7 +385,7 @@ export default function TrailerUnitDetailPage() {
         body: JSON.stringify(repairForm),
       })
       setShowAddRepair(false)
-      setRepairForm({ date: dateInputValue(new Date()), title: '', status: 'open', cost: '', responsible: '', description: '' })
+      setRepairForm({ date: dateInputValue(new Date()), title: '', status: 'open', materialCost: '', laborCost: '', repairerUserId: '', repairerOther: '', description: '' })
       const res = await fetch(`/api/trailers/${id}/repairs`)
       if (res.ok) setRepairs(await res.json())
       load()
@@ -896,17 +927,17 @@ export default function TrailerUnitDetailPage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         {doc.fileUrl ? (
                           <>
-                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                            <button type="button" onClick={() => setPreviewDoc(doc)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors" title="Ver PDF">
                               <Eye size={15} />
-                            </a>
+                            </button>
                             <a href={doc.fileUrl} download={doc.fileName ?? undefined}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors" title="Descargar">
                               <Download size={15} />
                             </a>
                             <label className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer" title="Reemplazar">
                               <Upload size={15} />
-                              <input type="file" accept="application/pdf" className="hidden"
+                              <input type="file" accept="application/pdf,image/*" className="hidden"
                                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(doc.id, f); e.target.value = '' }} />
                             </label>
                             <button onClick={() => removeFile(doc.id)}
@@ -1045,12 +1076,26 @@ export default function TrailerUnitDetailPage() {
                     <input className="input" value={repairForm.title} onChange={e => setRepairForm(f => ({ ...f, title: e.target.value }))} placeholder="Ej: Reparacion de luces traseras" required autoFocus />
                   </div>
                   <div>
-                    <label>Costo</label>
-                    <input className="input" type="number" min="0" step="0.01" value={repairForm.cost} onChange={e => setRepairForm(f => ({ ...f, cost: e.target.value }))} />
+                    <label>Quien reparo</label>
+                    <select className="input" value={repairForm.repairerUserId} onChange={e => setRepairForm(f => ({ ...f, repairerUserId: e.target.value }))}>
+                      <option value="">Sin especificar</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      <option value="other">Otro</option>
+                    </select>
+                  </div>
+                  {repairForm.repairerUserId === 'other' && (
+                    <div>
+                      <label>Aclarar quien</label>
+                      <input className="input" value={repairForm.repairerOther} onChange={e => setRepairForm(f => ({ ...f, repairerOther: e.target.value }))} />
+                    </div>
+                  )}
+                  <div>
+                    <label>Materiales</label>
+                    <input className="input" type="number" min="0" step="0.01" value={repairForm.materialCost} onChange={e => setRepairForm(f => ({ ...f, materialCost: e.target.value }))} />
                   </div>
                   <div>
-                    <label>Responsable / taller</label>
-                    <input className="input" value={repairForm.responsible} onChange={e => setRepairForm(f => ({ ...f, responsible: e.target.value }))} />
+                    <label>Mano de obra</label>
+                    <input className="input" type="number" min="0" step="0.01" value={repairForm.laborCost} onChange={e => setRepairForm(f => ({ ...f, laborCost: e.target.value }))} />
                   </div>
                   <div className="sm:col-span-2">
                     <label>Observaciones</label>
@@ -1092,8 +1137,9 @@ export default function TrailerUnitDetailPage() {
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                           <span>{fmtDate(rep.date)}</span>
-                          {rep.cost != null && <span>${Number(rep.cost).toLocaleString('es-AR')}</span>}
-                          {rep.responsible && <span>{rep.responsible}</span>}
+                          {(rep.materialCost != null || rep.laborCost != null || rep.cost != null) && <span>${Number((rep.materialCost ?? 0) + (rep.laborCost ?? 0) || rep.cost).toLocaleString('es-AR')}</span>}
+                          {(rep.repairerUser?.name || rep.repairerOther || rep.responsible) && <span>Reparo: {rep.repairerUser?.name || rep.repairerOther || rep.responsible}</span>}
+                          {rep.registeredBy?.name && <span>Registro: {rep.registeredBy.name}</span>}
                         </div>
                         {rep.description && <p className="text-slate-400 text-sm mt-2">{rep.description}</p>}
                       </div>
@@ -1193,6 +1239,14 @@ export default function TrailerUnitDetailPage() {
       )}
 
       {/* ── MODAL: Add document ── */}
+      {previewDoc?.fileUrl && (
+        <FilePreviewModal
+          url={previewDoc.fileUrl}
+          title={previewDoc.fileName || previewDoc.name}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
+
       {showAddDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
@@ -1239,8 +1293,8 @@ export default function TrailerUnitDetailPage() {
                     ) : (
                       <label className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed border-slate-700 hover:border-slate-600 cursor-pointer transition-colors">
                         <Upload size={15} className="text-slate-500" />
-                        <span className="text-sm text-slate-500">Seleccionar PDF</span>
-                        <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden"
+                        <span className="text-sm text-slate-500">Seleccionar archivo</span>
+                        <input ref={fileInputRef} type="file" accept="application/pdf,image/*" className="hidden"
                           onChange={e => setDocFile(e.target.files?.[0] ?? null)} />
                       </label>
                     )}

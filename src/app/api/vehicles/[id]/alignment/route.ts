@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseDateOnly } from '@/lib/dates'
+import { createVehicleRepairLog } from '@/lib/repair-log'
 
 const ALIGNMENT_INTERVAL_KM = 10000
 
@@ -23,6 +24,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { vehicleId: params.id },
     update: data,
     create: { vehicleId: params.id, ...data },
+  })
+  await createVehicleRepairLog(req, params.id, {
+    date: body.lastDate,
+    title: 'Alineacion y balanceo',
+    mileage: lastKm,
+    source: 'alignment',
+    description: body.notes || null,
   })
   return NextResponse.json(result)
 }

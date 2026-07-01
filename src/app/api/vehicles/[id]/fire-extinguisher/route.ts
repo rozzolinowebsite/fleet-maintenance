@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseDateOnly } from '@/lib/dates'
+import { createVehicleRepairLog } from '@/lib/repair-log'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
@@ -18,6 +19,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       expirationDate,
       notes: body.notes ?? null,
     },
+  })
+  await createVehicleRepairLog(req, params.id, {
+    date: body.expirationDate,
+    title: 'Matafuego',
+    source: 'fire-extinguisher',
+    description: [`Vencimiento: ${body.expirationDate}`, body.notes || null].filter(Boolean).join(' | '),
   })
   return NextResponse.json(record)
 }

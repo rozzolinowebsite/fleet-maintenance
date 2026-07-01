@@ -13,6 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!file || !field || !ALLOWED_FIELDS.includes(field)) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
+  const isAllowed = file.type.startsWith('image/') || file.type === 'application/pdf'
+  if (!isAllowed) return NextResponse.json({ error: 'Solo se permiten imagenes o PDF' }, { status: 400 })
 
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)

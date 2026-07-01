@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Car, Boxes, AlertTriangle, CheckCircle, Plus, Trash2,
   Pencil, X, Check, UserCog, BookOpen, ClipboardList, Briefcase, Upload,
+  Eye, Download, FileText,
 } from 'lucide-react'
 import { dateInputValue } from '@/lib/dates'
 
@@ -251,6 +252,29 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 /* ─── PHOTO UPLOAD ─── */
+function DocumentPreview({ url, label, onClose }: { url: string; label: string; onClose: () => void }) {
+  const isPdf = url.toLowerCase().includes('.pdf')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-5xl h-[88vh] shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
+          <h2 className="font-semibold text-white">{label}</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="flex-1 min-h-0 bg-slate-950 rounded-b-2xl overflow-hidden">
+          {isPdf ? (
+            <iframe src={url} className="w-full h-full" title={label} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img src={url} alt={label} className="max-w-full max-h-full object-contain rounded-lg" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PhotoUpload({ url, label, driverId, field, onRefresh }: {
   url: string | null | undefined
   label: string
@@ -259,7 +283,9 @@ function PhotoUpload({ url, label, driverId, field, onRefresh }: {
   onRefresh: () => void
 }) {
   const [uploading, setUploading] = useState(false)
+  const [preview, setPreview] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isPdf = !!url && url.toLowerCase().includes('.pdf')
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -287,8 +313,30 @@ function PhotoUpload({ url, label, driverId, field, onRefresh }: {
     <div className="relative group">
       {url ? (
         <>
-          <img src={url} alt={label} className="w-full aspect-video object-cover rounded-lg border border-slate-700" />
+          <div className="w-full aspect-video rounded-lg border border-slate-700 bg-slate-800/70 flex items-center justify-center overflow-hidden">
+            {isPdf ? (
+              <div className="flex flex-col items-center gap-2 text-slate-400">
+                <FileText size={32} />
+                <span className="text-xs">PDF cargado</span>
+              </div>
+            ) : (
+              <img src={url} alt={label} className="w-full h-full object-cover" />
+            )}
+          </div>
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+            <button
+              onClick={() => setPreview(true)}
+              className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-500 transition-colors"
+            >
+              Ver
+            </button>
+            <a
+              href={url}
+              download
+              className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              Descargar
+            </a>
             <button
               onClick={() => inputRef.current?.click()}
               className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
@@ -302,6 +350,7 @@ function PhotoUpload({ url, label, driverId, field, onRefresh }: {
               Quitar
             </button>
           </div>
+          {preview && <DocumentPreview url={url} label={label} onClose={() => setPreview(false)} />}
         </>
       ) : (
         <button
@@ -317,7 +366,7 @@ function PhotoUpload({ url, label, driverId, field, onRefresh }: {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         className="hidden"
         onChange={handleFile}
         disabled={uploading}

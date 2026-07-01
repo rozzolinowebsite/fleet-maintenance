@@ -14,10 +14,17 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
       alignmentBalance: true,
       tools: { orderBy: { createdAt: 'asc' } },
       fluids: { orderBy: { createdAt: 'asc' } },
+      filters: { orderBy: { createdAt: 'asc' }, include: { equivalents: { orderBy: { createdAt: 'asc' } } } },
       dailyReviews: { orderBy: { date: 'desc' }, take: 10, include: { user: true } },
       weeklyReviews: { orderBy: { weekStart: 'desc' }, take: 5, include: { user: true } },
       links: { orderBy: { order: 'asc' } },
-      repairs: { orderBy: { date: 'desc' } },
+      repairs: {
+        orderBy: { date: 'desc' },
+        include: {
+          repairerUser: { select: { id: true, name: true } },
+          registeredBy: { select: { id: true, name: true } },
+        },
+      },
     },
   })
   if (!vehicle) return NextResponse.json({ error: 'Not found' }, { status: 404 })

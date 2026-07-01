@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { parseDateOnly } from '@/lib/dates'
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const fluids = await db.fluid.findMany({
@@ -20,8 +21,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       kmInterval: body.kmInterval ? Number(body.kmInterval) : null,
       lastKm: body.lastKm ? Number(body.lastKm) : null,
       nextKm: body.nextKm ? Number(body.nextKm) : null,
-      lastDate: body.lastDate ? new Date(body.lastDate) : null,
-      nextDate: body.nextDate ? new Date(body.nextDate) : null,
+      lastDate: parseDateOnly(body.lastDate),
+      nextDate: parseDateOnly(body.nextDate),
       notes: body.notes || null,
       showMaintenanceBtn: body.showMaintenanceBtn !== undefined ? Boolean(body.showMaintenanceBtn) : true,
     },

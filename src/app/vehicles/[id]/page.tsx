@@ -24,7 +24,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'insurance', label: 'Seguro', icon: <Shield size={15} /> },
   { id: 'maintenance', label: 'Mantenimiento', icon: <Settings size={15} /> },
   { id: 'repairs', label: 'Reparaciones', icon: <Wrench size={15} /> },
-  { id: 'fluids', label: 'Fluidos', icon: <Droplets size={15} /> },
+  { id: 'fluids', label: 'Fluidos/Filtros', icon: <Droplets size={15} /> },
   { id: 'tools', label: 'Herramientas', icon: <Wrench size={15} /> },
   { id: 'reviews', label: 'Revisiones', icon: <ClipboardList size={15} /> },
   { id: 'links', label: 'Links', icon: <Link2 size={15} /> },
@@ -1200,15 +1200,22 @@ function TirePressureSection({ vehicle, onRefresh }: any) {
 function RepairsTab({ vehicle, onRefresh }: any) {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [users, setUsers] = useState<any[]>([])
   const [form, setForm] = useState({
     date: dateInputValue(new Date()),
     title: '',
     status: 'open',
     mileage: vehicle.kmCurrent?.toString() ?? '',
-    cost: '',
-    responsible: '',
+    materialCost: '',
+    laborCost: '',
+    repairerUserId: '',
+    repairerOther: '',
     description: '',
   })
+
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => setUsers([]))
+  }, [])
 
   const statusMap: Record<string, { label: string; cls: string }> = {
     open: { label: 'Pendiente', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
@@ -1226,7 +1233,7 @@ function RepairsTab({ vehicle, onRefresh }: any) {
     })
     setSaving(false)
     setShowForm(false)
-    setForm({ date: dateInputValue(new Date()), title: '', status: 'open', mileage: vehicle.kmCurrent?.toString() ?? '', cost: '', responsible: '', description: '' })
+    setForm({ date: dateInputValue(new Date()), title: '', status: 'open', mileage: vehicle.kmCurrent?.toString() ?? '', materialCost: '', laborCost: '', repairerUserId: '', repairerOther: '', description: '' })
     onRefresh()
   }
 
@@ -1281,16 +1288,30 @@ function RepairsTab({ vehicle, onRefresh }: any) {
                 <input className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ej: Cambio de ruleman delantero" required autoFocus />
               </div>
               <div>
-                <label>Kilometraje</label>
+                <label>Km al reparar</label>
                 <input className="input" type="number" min="0" value={form.mileage} onChange={e => setForm(f => ({ ...f, mileage: e.target.value }))} />
               </div>
               <div>
-                <label>Costo</label>
-                <input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="Opcional" />
+                <label>Quien reparo</label>
+                <select className="input" value={form.repairerUserId} onChange={e => setForm(f => ({ ...f, repairerUserId: e.target.value }))}>
+                  <option value="">Sin especificar</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  <option value="other">Otro</option>
+                </select>
               </div>
-              <div className="sm:col-span-2">
-                <label>Responsable / taller</label>
-                <input className="input" value={form.responsible} onChange={e => setForm(f => ({ ...f, responsible: e.target.value }))} />
+              {form.repairerUserId === 'other' && (
+                <div className="sm:col-span-2">
+                  <label>Aclarar quien reparo</label>
+                  <input className="input" value={form.repairerOther} onChange={e => setForm(f => ({ ...f, repairerOther: e.target.value }))} />
+                </div>
+              )}
+              <div>
+                <label>Materiales</label>
+                <input className="input" type="number" min="0" step="0.01" value={form.materialCost} onChange={e => setForm(f => ({ ...f, materialCost: e.target.value }))} placeholder="Opcional" />
+              </div>
+              <div>
+                <label>Mano de obra</label>
+                <input className="input" type="number" min="0" step="0.01" value={form.laborCost} onChange={e => setForm(f => ({ ...f, laborCost: e.target.value }))} placeholder="Opcional" />
               </div>
               <div className="sm:col-span-2">
                 <label>Observaciones</label>
@@ -1325,8 +1346,12 @@ function RepairsTab({ vehicle, onRefresh }: any) {
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                     <span>{fmtDate(r.date)}</span>
                     {r.mileage != null && <span>{r.mileage.toLocaleString()} km</span>}
-                    {r.cost != null && <span>${Number(r.cost).toLocaleString('es-AR')}</span>}
-                    {r.responsible && <span>{r.responsible}</span>}
+                    {(r.materialCost != null || r.laborCost != null || r.cost != null) && (
+                      <span>${Number((r.materialCost ?? 0) + (r.laborCost ?? 0) || r.cost).toLocaleString('es-AR')}</span>
+                    )}
+                    {(r.repairerUser?.name || r.repairerOther || r.responsible) && <span>Reparo: {r.repairerUser?.name || r.repairerOther || r.responsible}</span>}
+                    {r.registeredBy?.name && <span>Registro: {r.registeredBy.name}</span>}
+                    {r.source && <span className="uppercase">{r.source}</span>}
                   </div>
                   {r.description && <p className="text-slate-400 text-sm mt-2">{r.description}</p>}
                 </div>
@@ -1345,6 +1370,27 @@ function RepairsTab({ vehicle, onRefresh }: any) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function FilePreviewModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  const isPdf = url.toLowerCase().includes('.pdf')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-5xl h-[88vh] shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+          <h2 className="font-semibold text-white">{title}</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="flex-1 min-h-0 bg-slate-950 rounded-b-2xl overflow-hidden">
+          {isPdf ? <iframe src={url} className="w-full h-full" title={title} /> : (
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img src={url} alt={title} className="max-w-full max-h-full object-contain rounded-lg" />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1726,9 +1772,13 @@ function makeEmptyFluidForm(today: string): FluidFormData {
 function FluidsTab({ vehicle, onRefresh }: any) {
   const today = new Date().toISOString().slice(0, 10)
   const [showForm, setShowForm] = useState(false)
+  const [showFilterForm, setShowFilterForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<FluidFormData>(() => makeEmptyFluidForm(today))
+  const [filterForm, setFilterForm] = useState({ type: 'aceite', brand: '', code: '', description: '', notes: '' })
+  const [equivFor, setEquivFor] = useState<string | null>(null)
+  const [equivForm, setEquivForm] = useState({ brand: '', code: '', description: '', notes: '' })
 
   function onChange(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -1776,6 +1826,45 @@ function FluidsTab({ vehicle, onRefresh }: any) {
     onRefresh()
   }
 
+  async function addFilter(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/vehicles/${vehicle.id}/filters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(filterForm),
+    })
+    setSaving(false)
+    setShowFilterForm(false)
+    setFilterForm({ type: 'aceite', brand: '', code: '', description: '', notes: '' })
+    onRefresh()
+  }
+
+  async function deleteFilter(filterId: string) {
+    if (!confirm('Eliminar este filtro?')) return
+    await fetch(`/api/vehicles/${vehicle.id}/filters/${filterId}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  async function addEquivalent(e: React.FormEvent, filterId: string) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/vehicles/${vehicle.id}/filters/${filterId}/equivalents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(equivForm),
+    })
+    setSaving(false)
+    setEquivFor(null)
+    setEquivForm({ brand: '', code: '', description: '', notes: '' })
+    onRefresh()
+  }
+
+  async function deleteEquivalent(filterId: string, equivalentId: string) {
+    await fetch(`/api/vehicles/${vehicle.id}/filters/${filterId}/equivalents/${equivalentId}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
   function startEdit(fluid: any) {
     setEditId(fluid.id)
     setShowForm(false)
@@ -1794,18 +1883,66 @@ function FluidsTab({ vehicle, onRefresh }: any) {
   }
 
   const fluids = vehicle.fluids ?? []
+  const filters = vehicle.filters ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">
-          Fluidos y vencimientos <span className="text-slate-500 font-normal text-sm">({fluids.length})</span>
+          Fluidos/Filtros <span className="text-slate-500 font-normal text-sm">({fluids.length + filters.length})</span>
         </h2>
-        <button onClick={() => { setShowForm(v => !v); setEditId(null); setForm(makeEmptyFluidForm(today)) }} className="btn-primary flex items-center gap-2">
-          <Plus size={15} />
-          Agregar fluido
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowFilterForm(v => !v); setShowForm(false) }} className="btn-secondary flex items-center gap-2">
+            <Plus size={15} />
+            Crear filtro
+          </button>
+          <button onClick={() => { setShowForm(v => !v); setShowFilterForm(false); setEditId(null); setForm(makeEmptyFluidForm(today)) }} className="btn-primary flex items-center gap-2">
+            <Plus size={15} />
+            Agregar fluido
+          </button>
+        </div>
       </div>
+
+      {showFilterForm && (
+        <div className="card">
+          <h3 className="section-title">Nuevo filtro</h3>
+          <form onSubmit={addFilter} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label>Tipo</label>
+                <select className="input" value={filterForm.type} onChange={e => setFilterForm(f => ({ ...f, type: e.target.value }))}>
+                  <option value="aceite">Aceite</option>
+                  <option value="aire">Aire</option>
+                  <option value="combustible">Combustible</option>
+                  <option value="habitaculo">Habitaculo</option>
+                  <option value="hidraulico">Hidraulico</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label>Marca original</label>
+                <input className="input" value={filterForm.brand} onChange={e => setFilterForm(f => ({ ...f, brand: e.target.value }))} />
+              </div>
+              <div className="col-span-2">
+                <label>Codigo / modelo *</label>
+                <input className="input" value={filterForm.code} onChange={e => setFilterForm(f => ({ ...f, code: e.target.value }))} required />
+              </div>
+              <div className="col-span-2">
+                <label>Descripcion</label>
+                <input className="input" value={filterForm.description} onChange={e => setFilterForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="col-span-2">
+                <label>Notas</label>
+                <input className="input" value={filterForm.notes} onChange={e => setFilterForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button className="btn-primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar filtro'}</button>
+              <button type="button" onClick={() => setShowFilterForm(false)} className="btn-secondary">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="card">
@@ -1864,6 +2001,59 @@ function FluidsTab({ vehicle, onRefresh }: any) {
           })}
         </div>
       )}
+
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="section-title">Filtros del vehiculo</h3>
+          <span className="text-slate-500 text-xs">{filters.length} registrado{filters.length !== 1 ? 's' : ''}</span>
+        </div>
+        {filters.length === 0 ? (
+          <p className="text-slate-500 text-sm">No hay filtros registrados para este vehiculo.</p>
+        ) : (
+          <div className="space-y-3">
+            {filters.map((filter: any) => (
+              <div key={filter.id} className="p-3 rounded-lg bg-slate-800/40 border border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 border border-slate-600">{filter.type}</span>
+                      <p className="text-white font-semibold">{filter.brand ? `${filter.brand} ` : ''}{filter.code}</p>
+                    </div>
+                    {filter.description && <p className="text-slate-400 text-sm mt-1">{filter.description}</p>}
+                    {filter.notes && <p className="text-slate-500 text-xs mt-1">{filter.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setEquivFor(equivFor === filter.id ? null : filter.id)} className="text-xs text-blue-400 hover:text-blue-300">Equivalente</button>
+                    <button onClick={() => deleteFilter(filter.id)} className="text-slate-600 hover:text-red-400"><Trash2 size={15} /></button>
+                  </div>
+                </div>
+                {filter.equivalents?.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-700 space-y-1">
+                    {filter.equivalents.map((eq: any) => (
+                      <div key={eq.id} className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-300">{eq.brand} {eq.code}</span>
+                        {eq.description && <span className="text-slate-500 text-xs">{eq.description}</span>}
+                        <button onClick={() => deleteEquivalent(filter.id, eq.id)} className="ml-auto text-slate-600 hover:text-red-400"><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {equivFor === filter.id && (
+                  <form onSubmit={e => addEquivalent(e, filter.id)} className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-2">
+                    <input className="input" placeholder="Marca equivalente" value={equivForm.brand} onChange={e => setEquivForm(f => ({ ...f, brand: e.target.value }))} required />
+                    <input className="input" placeholder="Codigo equivalente" value={equivForm.code} onChange={e => setEquivForm(f => ({ ...f, code: e.target.value }))} required />
+                    <input className="input col-span-2" placeholder="Descripcion / notas" value={equivForm.description} onChange={e => setEquivForm(f => ({ ...f, description: e.target.value }))} />
+                    <div className="col-span-2 flex gap-2">
+                      <button className="btn-primary text-sm" disabled={saving}>{saving ? 'Guardando...' : 'Guardar equivalente'}</button>
+                      <button type="button" onClick={() => setEquivFor(null)} className="btn-secondary text-sm">Cancelar</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1992,6 +2182,7 @@ function InsuranceTab({ vehicle, onRefresh }: any) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [preview, setPreview] = useState(false)
   const [form, setForm] = useState({ insuranceCompany: '', policyNumber: '', policyStartDate: '', policyExpirationDate: '' })
 
   const insuranceS = getInsuranceStatus(vehicle.policyExpirationDate ?? null)
@@ -2147,10 +2338,7 @@ function InsuranceTab({ vehicle, onRefresh }: any) {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a href={vehicle.policyPdfUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm flex items-center gap-2">
-                <Eye size={14} />
-                Ver póliza
-              </a>
+              <button type="button" onClick={() => setPreview(true)} className="btn-secondary text-sm flex items-center gap-2"><Eye size={14} />Ver poliza</button>
               <a href={vehicle.policyPdfUrl} download={vehicle.policyPdfName || 'poliza.pdf'} className="btn-secondary text-sm flex items-center gap-2">
                 <Download size={14} />
                 Descargar
@@ -2165,6 +2353,7 @@ function InsuranceTab({ vehicle, onRefresh }: any) {
                 Eliminar
               </button>
             </div>
+            {preview && <FilePreviewModal url={vehicle.policyPdfUrl} title={vehicle.policyPdfName || 'Poliza'} onClose={() => setPreview(false)} />}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -2277,3 +2466,4 @@ function LinksTab({ vehicle, onRefresh }: any) {
     </div>
   )
 }
+

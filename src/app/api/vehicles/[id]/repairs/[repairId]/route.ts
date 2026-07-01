@@ -11,9 +11,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { repairId: 
       ...(body.status !== undefined && { status: body.status }),
       ...('date' in body && { date: parseDateOnly(body.date) ?? new Date() }),
       ...('mileage' in body && { mileage: body.mileage ? Number(body.mileage) : null }),
+      ...('materialCost' in body && { materialCost: body.materialCost ? Number(body.materialCost) : null }),
+      ...('laborCost' in body && { laborCost: body.laborCost ? Number(body.laborCost) : null }),
       ...('cost' in body && { cost: body.cost ? Number(body.cost) : null }),
       ...('responsible' in body && { responsible: body.responsible || null }),
+      ...('repairerUserId' in body && { repairerUserId: body.repairerUserId === 'other' ? null : body.repairerUserId || null }),
+      ...('repairerOther' in body && { repairerOther: body.repairerOther || null }),
       ...('description' in body && { description: body.description || null }),
+    },
+    include: {
+      repairerUser: { select: { id: true, name: true } },
+      registeredBy: { select: { id: true, name: true } },
     },
   })
   return NextResponse.json(repair)

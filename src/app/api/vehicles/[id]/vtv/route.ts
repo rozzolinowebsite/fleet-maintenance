@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseDateOnly } from '@/lib/dates'
+import { createVehicleRepairLog } from '@/lib/repair-log'
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json()
@@ -21,6 +22,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       lastDate,
       notes: body.notes || null,
     },
+  })
+  await createVehicleRepairLog(req, params.id, {
+    date: body.lastDate || body.expirationDate,
+    title: 'VTV / RTO',
+    source: 'vtv',
+    description: [`Vencimiento: ${body.expirationDate}`, body.notes || null].filter(Boolean).join(' | '),
   })
   return NextResponse.json(vtv)
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { addOneYear, parseDateOnly } from '@/lib/dates'
+import { createVehicleRepairLog } from '@/lib/repair-log'
 
 const OIL_CHANGE_INTERVAL_KM = 10000
 
@@ -42,6 +43,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       fuelFilterChanged: body.fuelFilterChanged ?? false,
       notes: body.notes || null,
     },
+  })
+  await createVehicleRepairLog(req, params.id, {
+    date: body.lastDate,
+    title: 'Service de aceite',
+    mileage: lastKm,
+    source: 'oil-change',
+    description: [
+      body.oilType ? `Aceite: ${body.oilType}` : null,
+      body.airFilterCleaned ? 'Filtro de aire limpiado' : null,
+      body.airFilterChanged ? 'Filtro de aire cambiado' : null,
+      body.fuelFilterChanged ? 'Filtro de combustible cambiado' : null,
+      body.notes || null,
+    ].filter(Boolean).join(' | ') || null,
   })
   return NextResponse.json(oilChange)
 }

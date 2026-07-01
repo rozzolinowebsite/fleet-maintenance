@@ -6,7 +6,14 @@ const INCLUDE = {
   documents: { orderBy: { createdAt: 'desc' } as const },
   maintenances: { take: 1, orderBy: { date: 'desc' } as const },
   inspections: { take: 1, orderBy: { date: 'desc' } as const },
-  repairs: { take: 10, orderBy: { date: 'desc' } as const },
+  repairs: {
+    take: 10,
+    orderBy: { date: 'desc' } as const,
+    include: {
+      repairerUser: { select: { id: true, name: true } },
+      registeredBy: { select: { id: true, name: true } },
+    },
+  },
   _count: { select: { maintenances: true, inspections: true, repairs: true } },
 }
 

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string;
   const file = form.get('file') as File | null
 
   if (!file) return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 })
-  if (file.type !== 'application/pdf') return NextResponse.json({ error: 'Solo se permiten archivos PDF' }, { status: 400 })
+  if (!(file.type === 'application/pdf' || file.type.startsWith('image/'))) return NextResponse.json({ error: 'Solo se permiten PDF o imagenes' }, { status: 400 })
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 400 })
 
   const doc = await db.trailerDocument.findUnique({ where: { id: params.docId } })
@@ -24,7 +24,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string;
   const dir = path.join(process.cwd(), 'public', 'uploads', 'trailers', params.id)
   await mkdir(dir, { recursive: true })
 
-  const filename = `doc-${Date.now()}.pdf`
+  const ext = (file.name.split('.').pop() || (file.type === 'application/pdf' ? 'pdf' : 'jpg')).toLowerCase()
+  const filename = `doc-${Date.now()}.${ext}`
   await writeFile(path.join(dir, filename), Buffer.from(bytes))
 
   const fileUrl = `/uploads/trailers/${params.id}/${filename}`
